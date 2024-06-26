@@ -4,13 +4,13 @@ use serde::{Deserialize, Deserializer};
 pub struct Me {
     id: String,
     username: String,
-    avatar: String,
+    avatar: Option<String>,
     discriminator: String,
     public_flags: u64,
     premium_type: u64,
     flags: u64,
     banner: Option<String>,
-    accent_color: Option<String>,
+    accent_color: Option<u32>,
     global_name: Option<String>,
     avatar_decoration_data: Option<String>,
     banner_color: Option<String>,
@@ -35,7 +35,7 @@ impl Me {
         &self.username
     }
 
-    pub fn avatar(&self) -> &String {
+    pub fn avatar(&self) -> &Option<String> {
         &self.avatar
     }
 
@@ -59,7 +59,7 @@ impl Me {
         &self.banner
     }
 
-    pub fn accent_color(&self) -> &Option<String> {
+    pub fn accent_color(&self) -> &Option<u32> {
         &self.accent_color
     }
 
@@ -116,7 +116,7 @@ impl Me {
 pub struct User {
     id: String,
     username: String,
-    avatar: String,
+    avatar: Option<String>,
     discriminator: String,
     public_flags: u64,
     extra_info: Option<ExtraInfo>, // ExtraInfo as an Option
@@ -133,7 +133,7 @@ impl User {
         &self.username
     }
 
-    pub fn avatar(&self) -> &String {
+    pub fn avatar(&self) -> &Option<String> {
         &self.avatar
     }
 
@@ -164,12 +164,13 @@ impl<'de> Deserialize<'de> for User {
         #[derive(Debug, Deserialize)]
         struct UserHelper {
             id: String,
+            bot: Option<bool>,
             username: String,
-            avatar: String,
+            avatar: Option<String>,
             discriminator: String,
             public_flags: u64,
             premium_type: Option<u64>,
-            flags: u64,
+            flags: Option<u64>,
             banner: Option<String>,
             accent_color: Option<u64>,
             banner_color: Option<String>,
@@ -181,7 +182,8 @@ impl<'de> Deserialize<'de> for User {
 
         if helper.premium_type.is_some() {
             extra_info = Some(ExtraInfo {
-                premium_type: helper.premium_type.unwrap(),
+                bot: helper.bot,
+                premium_type: helper.premium_type,
                 flags: helper.flags,
                 banner: helper.banner,
                 accent_color: helper.accent_color,
@@ -203,8 +205,9 @@ impl<'de> Deserialize<'de> for User {
 // Define the ExtraInfo struct with additional fields
 #[derive(Debug, Deserialize)]
 pub struct ExtraInfo {
-    premium_type: u64,
-    flags: u64,
+    bot: Option<bool>,
+    premium_type: Option<u64>,
+    flags: Option<u64>,
     banner: Option<String>,
     accent_color: Option<u64>, // Change to u64 for accent_color
     banner_color: Option<String>,
@@ -212,12 +215,16 @@ pub struct ExtraInfo {
 
 impl ExtraInfo {
     // Getter methods for ExtraInfo fields
-    pub fn premium_type(&self) -> u64 {
-        self.premium_type
+    pub fn bot(&self) -> &Option<bool> {
+        &self.bot
     }
 
-    pub fn flags(&self) -> u64 {
-        self.flags
+    pub fn premium_type(&self) -> &Option<u64> {
+        &self.premium_type
+    }
+
+    pub fn flags(&self) -> &Option<u64> {
+        &self.flags
     }
 
     pub fn banner(&self) -> &Option<String> {

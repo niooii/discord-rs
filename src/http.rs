@@ -39,8 +39,11 @@ pub enum QueryError {
     #[error("Wrong Channel Type")]
     WrongChannelType { correct_type: ChannelType },
 
-    #[error("Wrong Channel Type")]
+    #[error("Ratelimit reached: try again after {retry_after} seconds")]
     RateLimitReached { retry_after: f64 },
+
+    #[error("Unhandled Error: {error}")]
+    Other { error: String },
 }
 
 async fn res_to_type<T>(res: Response) -> Result<T, QueryError>
