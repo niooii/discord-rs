@@ -3,6 +3,7 @@ use reqwest::header::{self, HeaderName};
 use reqwest::{header::HeaderMap, Client, ClientBuilder};
 use reqwest::{Response, StatusCode};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use thiserror::Error;
 
 pub fn build_request_client(auth: &String, ua: &String) -> Result<Client, reqwest::Error> {
@@ -74,29 +75,27 @@ where
 
 async fn validate_auth(auth: &String) {}
 
-pub async fn get_data<T>(client: &Client, url: &str, payload: Option<()>) -> Result<T, QueryError>
+#[derive(Serialize)]
+struct Payload;
+
+pub async fn get_data<T>(client: Client, url: &str, payload: Option<Payload>, method: reqwest::Method) -> Result<T, QueryError>
 where
     T: DeserializeOwned,
 {
-    if let Some(p) = payload {
-        // send payload and get response
-        Err(QueryError::Placeholder)
-    } else {
-        // parse no payload data
-        let res = client.get(url).send().await;
-
-        if let Err(e) = res {
-            return Err(QueryError::ReqwestError { err: e });
-        }
-
-        let json = validate_ratelimit(res.unwrap()).await?;
-
-        json_to_type::<T>(json).await
-    }
+    let json = get_json(client, url, payload, method).await?;
+    json_to_type::<T>(json).await
 }
 
-pub async fn get_as_json(client: &Client, url: &str) -> Result<serde_json::Value, QueryError> {
-    get_data::<serde_json::Value>(client, url, None).await
+pub async fn get_json(client: Client, url: &str, payload: Option<Payload>, method: reqwest::Method) -> Result<serde_json::Value, QueryError> {
+    let req = if let Some(p) = payload {
+        client.request(method, url).json(&p)
+    } else {
+        client.request(method, url)
+    };
+
+    let res = req.send().await
+        .map_err(|e| QueryError::ReqwestError { err: e })?;
+    validate_ratelimit(res).await
 }
 
 pub async fn validate_ratelimit(res: Response) -> Result<serde_json::Value, QueryError> {
