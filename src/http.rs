@@ -1,9 +1,10 @@
-use crate::channel::ChannelType;
+use crate::channel::Channel;
 use reqwest::header::{self, HeaderName};
 use reqwest::{header::HeaderMap, Client, ClientBuilder};
 use reqwest::{Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json::Value;
 use thiserror::Error;
 
 pub fn build_request_client(auth: &String, ua: &String) -> Result<Client, reqwest::Error> {
@@ -31,14 +32,11 @@ pub enum QueryError {
     #[error("Reqwest error")]
     ReqwestError { err: reqwest::Error },
 
-    #[error("Serde error")]
+    #[error("Serde error: {err:?}")]
     SerdeError { err: serde_json::Error },
 
     #[error("Unauthorized")]
     Unauthorized { res: Response },
-
-    #[error("Wrong Channel Type")]
-    WrongChannelType { correct_type: ChannelType },
 
     #[error("Ratelimit reached: try again after {retry_after} seconds")]
     RateLimitReached { retry_after: f64 },
@@ -76,7 +74,7 @@ where
 async fn validate_auth(auth: &String) {}
 
 #[derive(Serialize)]
-struct Payload;
+pub struct Payload;
 
 pub async fn get_data<T>(client: Client, url: &str, payload: Option<Payload>, method: reqwest::Method) -> Result<T, QueryError>
 where
@@ -95,7 +93,8 @@ pub async fn get_json(client: Client, url: &str, payload: Option<Payload>, metho
 
     let res = req.send().await
         .map_err(|e| QueryError::ReqwestError { err: e })?;
-    validate_ratelimit(res).await
+    let value = validate_ratelimit(res).await;
+    value
 }
 
 pub async fn validate_ratelimit(res: Response) -> Result<serde_json::Value, QueryError> {

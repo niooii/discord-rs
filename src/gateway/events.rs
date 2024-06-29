@@ -1,5 +1,13 @@
 #![allow(dead_code)]
+use arboard::Clipboard;
 use serde::{Deserialize, Serialize};
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
+use anyhow::Result;
+use serde_json::Value;
+use super::dispatched_event::DispatchedEvent;
+use super::error::GatewayError;
+use serde::de::Error;
 
 #[derive(Serialize, PartialEq, Debug)]
 pub struct GatewaySendEventRaw
@@ -13,20 +21,14 @@ pub struct GatewayReceiveEventRaw
 {
     pub t: Option<String>,
     pub op: u32,
-    pub s: u32,
+    // worry about sequence field later
+    // pub s: u32,
     pub d: serde_json::Value,
 }
 
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
-use anyhow::Result;
-
-use super::dispatched_event::DispatchedEvent;
-use super::error::GatewayError;
-
 // https://discord.com/developers/docs/topics/opcodes-and-status-codes#gateway-gateway-close-event-codes
 #[derive(Debug, FromPrimitive, PartialEq, Eq, Copy, Clone)]
-#[repr(u32)]
+#[repr(u8)]
 pub enum GatewayOpCode {
     /*
     TYPE: Receive
@@ -95,24 +97,68 @@ pub enum GatewayOpCode {
     HeartbeatAck = 11,
 }
 
-pub enum GatewayRecieveEvent {
-    DispatchEvent{ e: DispatchedEvent }
+#[derive(Deserialize, Debug)]
+pub struct HeartbeatInfo {
+    heartbeat_interval: u32
 }
 
-impl GatewayRecieveEvent {
-    
+#[derive(Debug)]
+pub enum GatewayRecieveEvent {
+    GeneralEvent(DispatchedEvent),
+    Hello(HeartbeatInfo)
+}
 
-    pub fn from_raw(data_raw: GatewayReceiveEventRaw) -> Result<Self, GatewayError> {
-        match FromPrimitive::from_u32(data_raw.op).unwrap() {
-            GatewayOpCode::Dispatch => {
-                todo!();
-                // Ok(DispatchedEvent::from_raw(data_raw)?)
+impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = Value::deserialize(d)?;
+        // TODO! comment out someday
+        let recieved_json = serde_json::to_string_pretty(&value).unwrap();
+        let opcode = value.get("op").unwrap();
+        let opcode = opcode.as_u64().unwrap();
+        let opcode = FromPrimitive::from_u8(opcode as u8).unwrap();
+        // handled separately bc ownership stuff
+        if opcode == GatewayOpCode::Dispatch {
+            if value.get("d").unwrap().is_array() {
+                return Err(
+                    D::Error::custom(format!("UnwantedEventError: got event {}", value.get("t").unwrap().to_string()))
+                );
             }
-            _ => {
-                Err(
-                    GatewayError::Custom {text: "Unhandled op code".to_string()}
-                )
+            let data = DispatchedEvent::deserialize(value);
+            if let Ok(e) = data {
+                return Ok(
+                    GatewayRecieveEvent::GeneralEvent(e)
+                );
+            } else {
+                eprintln!("Error: {data:?}");
+                let mut clipboard = Clipboard::new().expect("Failed to create clipboard.");
+                clipboard.set_text(recieved_json).expect("Failed to copy recieved json to clipboard.");
+                eprintln!("Recieved json has been copied to your clipboard.");
+                panic!();
             }
         }
+        let raw = GatewayReceiveEventRaw::deserialize(value).unwrap();
+        let gateway_recv_event = match opcode {
+            GatewayOpCode::Heartbeat => {
+                todo!()
+                // let data = HeartbeatInfo::deserialize(raw.d).unwrap();
+                // GatewayRecieveEvent::Hello(data)
+            },
+            GatewayOpCode::Identify => todo!(),
+            GatewayOpCode::PresenceUpdate => todo!(),
+            GatewayOpCode::VoiceStateUpdate => todo!(),
+            GatewayOpCode::Resume => todo!(),
+            GatewayOpCode::Reconnect => todo!(),
+            GatewayOpCode::RequestGuildMembers => todo!(),
+            GatewayOpCode::InvalidSession => todo!(),
+            GatewayOpCode::Hello => {
+                let data = HeartbeatInfo::deserialize(raw.d).unwrap();
+                GatewayRecieveEvent::Hello(data)
+            },
+            GatewayOpCode::HeartbeatAck => todo!(),
+            _ => {
+                panic!("Invalid opcode not handled...");
+            }
+        };
+        Ok(gateway_recv_event)
     }
 }

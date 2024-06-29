@@ -2,6 +2,8 @@
 
 use num_derive::FromPrimitive;
 use serde::Deserialize;
+use serde_json::error::Category;
+use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message;
 use zstd::stream::read::Decoder;
 use zstd::zstd_safe::WriteBuf;
@@ -16,6 +18,7 @@ use crate::endpoints;
 use crate::client::DiscordClient;
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
 use num_traits::FromPrimitive;
+use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::io::Read;
@@ -57,17 +60,12 @@ struct Presence {
 
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 struct ClientState {
-    guild_versions: std::collections::HashMap<String, u32>,
+    guild_versions: HashMap<String, u32>,
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Debug)]
-struct D {
-    token: String,
-    capabilities: u32,
-    properties: Properties,
-    presence: Presence,
-    compress: bool,
-    client_state: ClientState,
+pub struct GatewayConnection {
+    queued_events: BinaryHeap<GatewayRecieveEvent>,
+
 }
 
 impl GatewaySendEventRaw {
@@ -131,7 +129,6 @@ pub async fn test(token: &str) -> Result<()> {
         guild_versions: std::collections::HashMap::new(),
     };
 
-    // Create a new GatewayLogin instance
     let gateway_login = GatewaySendEventRaw::login(
         token.to_string(),
         30717,
@@ -147,17 +144,21 @@ pub async fn test(token: &str) -> Result<()> {
 
     let ws_to_stdout = {
         read.for_each(|message| async {
-            let json = serde_json::to_value(
-                message.unwrap().into_text().unwrap()
+            let json: Value = serde_json::from_str(
+                &message.unwrap().into_text().unwrap()
             ).unwrap();
+            let recv_event = GatewayRecieveEvent::deserialize(json);
+            if let Err(e) = &recv_event {
+                // why must i do this chat
+                if e.is_data() && e.to_string().contains("UnwantedEventError") {
+                    eprintln!("recieved unwanted event but all good..");
+                }
+                // eprintln!("Recieved unwanted event type: {event_name}")
+            }
             // let data = message.unwrap().into_data();
             // let mut decompresser = decompresser.lock().unwrap();
             // let mut decompressed: Vec<u8> = decompresser.decompress(data.as_slice(), 12000).expect("AWFAJFNAWF");
-            println!("\n\n");
-            println!("\n\n");
-            println!("{:?}", json);
-            println!("\n\n");
-            println!("\n\n");
+            println!("{:?}", recv_event);
             // println!("{data}");            
         })
     };

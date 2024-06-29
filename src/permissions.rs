@@ -1,3 +1,6 @@
+use serde::Deserialize;
+use serde_repr::Deserialize_repr;
+
 
 // https://discord.com/developers/docs/topics/permissions
 pub mod permission_bit_flag {
@@ -61,8 +64,20 @@ impl Permissions {
     pub fn has_permission(&self, permission_bit_flag: u128) -> bool {
         self.bit_field & permission_bit_flag == permission_bit_flag
     }
+}
 
-    pub fn add_permission(&mut self, permission_bit_flag: u128) {
-        self.bit_field |= permission_bit_flag;
-    }
+#[derive(Deserialize_repr, Debug)]
+#[repr(u8)]
+pub enum PermissionOverwriteType {
+    Role = 0,
+    Member = 1,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PermissionOverwrite {
+    id: String,
+    #[serde(rename = "type")]
+    r#type: PermissionOverwriteType,
+    allow: String,
+    deny: String
 }

@@ -1,12 +1,12 @@
 pub const ME: &str = "https://discord.com/api/v9/users/@me";
-pub const CHANNELS: &str = "https://discord.com/api/v9/users/@me/channels";
+pub const PRIVATE_CHANNELS: &str = "https://discord.com/api/v9/users/@me/channels";
 
 pub fn CHANNEL(channel_id: &str) -> String {
     format!("https://discord.com/api/v9/channels/{}", channel_id)
 }
 
-pub fn PRIVATE_CHANNEL(channel_id: &str) -> String {
-    format!("https://discord.com/api/v9/channels/{}", channel_id)
+pub fn GUILD_CHANNELS(guild_id: &str) -> String {
+    format!("https://discord.com/api/v9/guilds/{}/channels", guild_id)
 }
 
 pub fn SEND_MESSAGE(channel_id: &str) -> String {
