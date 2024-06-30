@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::message::MessageData;
+use crate::message::Message;
 
 use super::{error::GatewayError, events::GatewayReceiveEventRaw};
 
@@ -10,7 +10,8 @@ use super::{error::GatewayError, events::GatewayReceiveEventRaw};
 pub enum DispatchedEvent {
     /// Message was created
     MessageCreate {
-        
+        #[serde(flatten)]
+        message_data: Message
     },
     /// Message was edited
     MessageUpdate {
@@ -292,4 +293,7 @@ pub enum DispatchedEvent {
     ConversationSummaryUpdate {
         
     },
+    PassiveUpdateV2 {
+
+    }
 }

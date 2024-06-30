@@ -99,15 +99,28 @@ pub enum GatewayOpCode {
 
 #[derive(Deserialize, Debug)]
 pub struct HeartbeatInfo {
-    heartbeat_interval: u32
+    pub heartbeat_interval: u64
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct GatewayRecieveEventInfo {
+    pub sequence: u64
 }
 
 #[derive(Debug)]
 pub enum GatewayRecieveEvent {
-    GeneralEvent(DispatchedEvent),
-    Hello(HeartbeatInfo)
+    GeneralEvent {
+        dispatched_event: DispatchedEvent, 
+        common: GatewayRecieveEventInfo
+    },
+    /// Heartbeat event, you don't need to worry about this most of the time.
+    /// Heartbeat sending is handled automatically.
+    Hello {
+        heartbeat_info: HeartbeatInfo, 
+        common: GatewayRecieveEventInfo
+    },
 }
-
+ 
 impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
@@ -116,6 +129,7 @@ impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
         let opcode = value.get("op").unwrap();
         let opcode = opcode.as_u64().unwrap();
         let opcode = FromPrimitive::from_u8(opcode as u8).unwrap();
+        let sequence = value.get("s").unwrap().as_u64().unwrap_or(0);
         // handled separately bc ownership stuff
         if opcode == GatewayOpCode::Dispatch {
             if value.get("d").unwrap().is_array() {
@@ -126,7 +140,10 @@ impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
             let data = DispatchedEvent::deserialize(value);
             if let Ok(e) = data {
                 return Ok(
-                    GatewayRecieveEvent::GeneralEvent(e)
+                    GatewayRecieveEvent::GeneralEvent {
+                        dispatched_event: e,
+                        common: GatewayRecieveEventInfo { sequence }
+                    }
                 );
             } else {
                 eprintln!("Error: {data:?}");
@@ -151,8 +168,14 @@ impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
             GatewayOpCode::RequestGuildMembers => todo!(),
             GatewayOpCode::InvalidSession => todo!(),
             GatewayOpCode::Hello => {
-                let data = HeartbeatInfo::deserialize(raw.d).unwrap();
-                GatewayRecieveEvent::Hello(data)
+                let heartbeat_info = HeartbeatInfo::deserialize(raw.d).unwrap();
+                let common = GatewayRecieveEventInfo {
+                    sequence
+                };
+                GatewayRecieveEvent::Hello { 
+                    heartbeat_info,
+                    common,
+                }
             },
             GatewayOpCode::HeartbeatAck => todo!(),
             _ => {
