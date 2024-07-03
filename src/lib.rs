@@ -9,7 +9,8 @@ pub mod wrapper;
 pub mod message;
 pub mod permissions;
 pub mod gateway;
-
+pub mod guild;
+pub mod voice;
 
 use zstd::stream::read::Decoder;
 use crate::http::validate_ratelimit;
@@ -23,20 +24,6 @@ use num_traits::FromPrimitive;
 use std::io::Cursor;
 use std::io::Read;
 use serde_eetf::{to_bytes, from_bytes};
-
-// messaging utilities
-#[derive(Serialize)]
-struct MessagePostData {
-    content: String
-}
-
-impl MessagePostData {
-    fn new(content: String) -> MessagePostData {
-        MessagePostData {
-            content
-        }
-    }
-}
 
 impl DiscordClient {
     // // wrapper implementations

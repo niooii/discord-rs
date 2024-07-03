@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::message::Message;
+use crate::{message::Message, voice::UserVoiceState, RelationshipAddType, RelationshipRemoveType};
 
 use super::{error::GatewayError, events::GatewayReceiveEventRaw};
 
@@ -19,10 +19,6 @@ pub enum DispatchedEvent {
     },
     /// Contains the initial state information
     Ready {
-        
-    },
-    /// Supplemental ready event (too huge to worry about tbh)
-    ReadySupplemental {
         
     },
     /// Defines the heartbeat interval
@@ -289,11 +285,65 @@ pub enum DispatchedEvent {
     MessagePollVoteRemove {
         
     },
-    /// Not sure what this does yet 
+    /* ========================================================================================= */
+    /* ----- THE FOLLOWING ARE ONLY FOR USER ACCOUNTS, AND ARE NOT DEFIEND IN THE API DOCS ----- */
+    /* ========================================================================================= */
+    /// A call has been created in the user's dms somewhere. (user only)
+    CallCreate {
+        // TODO!
+        // pub embedded_activities: [],
+        channel_id: String,
+        message_id: String,
+        region: String,
+        #[serde(rename = "ringing")]
+        ringing_user_ids: Vec<String>,
+        #[serde(rename = "voice_states")]
+        user_voice_states: Vec<UserVoiceState>
+    },
+    // /// A friend request has been sent to or from the user. (user only)
+    // RelationshipAdd {
+    //     r#type: RelationshipAddType,
+
+    // },
+    // /// A friend has been removed by the user or their friend. (user only)
+    // RelationshipRemove {
+    //     r#type: RelationshipRemoveType,
+
+    // },
+    /// Someone joined/left a vc in a server (I think). (user only)
+    VoiceChannelStatusUpdate {
+        // TODO!
+    },
+    /// (user only)
     ConversationSummaryUpdate {
         
     },
+    /// (user only)
     PassiveUpdateV2 {
+        
+    },
+    /// Supplemental ready event (too huge to worry about tbh) (user only)
+    ReadySupplemental {
+        
+    },
+    /// A message has been sent and acknowledged. (user only)
+    MessageAck {
+        channel_id: String,
+        flags: Option<u64>,
+        last_viewed: Option<u64>,
+        message_id: String,
+        version: u64
+    },
+    UserSettingsProtoUpdate {
 
+    },
+    GuildApplicationCommandIndexUpdate {
+
+    },
+    ChannelUnreadUpdate {
+
+    },
+    ContentInventoryInboxStale {
+        
     }
 }

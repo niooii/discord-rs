@@ -8,6 +8,7 @@ use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message;
 use zstd::stream::read::Decoder;
 use zstd::zstd_safe::WriteBuf;
+use tokio::time::sleep;
 use crate::http;
 use crate::http::validate_ratelimit;
 use http::QueryError;
@@ -26,6 +27,7 @@ use std::io::Cursor;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::Duration;
 use serde_eetf::{to_bytes, from_bytes};
 use anyhow::Result;
 
@@ -71,6 +73,7 @@ pub struct GatewayConnection {
     heartbeat_interval_ms: Arc<Mutex<u64>>,
     ws_data_read_loop: JoinHandle<()>,
     ws_heartbeat_send_loop: JoinHandle<()>,
+    event_q: Arc<Mutex<VecDeque<DispatchedEvent>>>
 }
 
 impl GatewayConnection { 
@@ -125,16 +128,21 @@ impl GatewayConnection {
 
         let curr_sequence = Arc::new(Mutex::new(0));
         let heartbeat_interval_ms = Arc::new(Mutex::new(0));
+        let event_q = Arc::new(Mutex::new(VecDeque::new()));
 
         let connection = GatewayConnection {
             curr_sequence: curr_sequence.clone(),
             heartbeat_interval_ms: heartbeat_interval_ms.clone(),
+            event_q: event_q.clone(),
             ws_data_read_loop: {
-
+                let heartbeat_interval = heartbeat_interval_ms.clone();
+                let curr_sequence = curr_sequence.clone();
+                let event_q = event_q.clone();
                 let read_task = tokio::spawn(
                     read.for_each(move |message| {
-                    let heartbeat_interval = heartbeat_interval_ms.clone();
-                    let curr_sequence: Arc<Mutex<u64>> = curr_sequence.clone();
+                    let heartbeat_interval = heartbeat_interval.clone();
+                    let curr_sequence = curr_sequence.clone();
+                    let event_q = event_q.clone();
                     async move {
                         let recv_data = message.unwrap().into_text().unwrap();
                         if recv_data.is_empty() {
@@ -148,23 +156,25 @@ impl GatewayConnection {
                         match recv_event {
                             Ok(e) => {
                                 let mut curr_sequence = curr_sequence.lock().unwrap();
-                                let e = match e {
+                                match e {
                                     // Heartbeats are handled automatically.
                                     GatewayRecieveEvent::Hello { heartbeat_info, common } => {
                                         let mut heartbeat_interval = heartbeat_interval.lock().unwrap();
                                         println!("heartbeat interval: {}ms", heartbeat_info.heartbeat_interval);
                                         *heartbeat_interval = heartbeat_info.heartbeat_interval;
                                         *curr_sequence = common.sequence;
-                                        GatewayRecieveEvent::Hello {heartbeat_info, common}
                                     },
                                     // TODO! be sure to handle the RESUME event, as it sends a list of events
+                                    // the only events that the user should be notified about.
                                     GatewayRecieveEvent::GeneralEvent { dispatched_event, common } => {
                                         *curr_sequence = common.sequence;
-                                        GatewayRecieveEvent::GeneralEvent {dispatched_event, common}
+                                        let mut event_q = event_q.lock().unwrap();
+                                        event_q.push_back(dispatched_event);
                                     }
-                                };
+                                    GatewayRecieveEvent::HeartbeatAck => {
 
-                                // TODO! list of callbacks(e);
+                                    },
+                                };
                             },
                             Err(e) => {
                                 // why must i do this chat
@@ -181,19 +191,50 @@ impl GatewayConnection {
                 read_task
             },
             ws_heartbeat_send_loop: {
+                let heartbeat_interval = heartbeat_interval_ms.clone();
+                let curr_sequence = curr_sequence.clone();
+                let heartbeat_task = tokio::spawn(async move {
+                    'send_loop: loop {
+                        // TODO! check if a heartbeat is sent immediately after sending the login data. 
+                        let ms = match heartbeat_interval.lock() {
+                            Ok(ms) => *ms,
+                            Err(poison) => {
+                                eprintln!("Websocket read thread has panicked, no longer sending heartbeats.");
+                                break 'send_loop;
+                            }
+                        };
 
-                let heartbeat_task = tokio::spawn(
-                    // TODO!
-                    async {
+                        if ms != 0 {
+                            let heartbeat_payload = {
+                                let curr_sequence = curr_sequence.lock().unwrap();
+                                serde_json::json!({
+                                    "op": 1,
+                                    "d": *curr_sequence
+                                })
+                            };
+
+                            if let Err(e) = write.send(Message::Text(heartbeat_payload.to_string())).await {
+                                eprintln!("Failed to send heartbeat: {:?}", e);
+                            } else {
+                                println!("heartbeat sent.");
+                            }
+                            sleep(Duration::from_millis(ms)).await;
+                        }
+                        
                         
                     }
-                );
+                });
 
                 heartbeat_task
             }
         };
 
         Ok(connection)
+    }
+
+    pub fn poll_events(&mut self) -> Option<DispatchedEvent> {
+        let mut event_q = self.event_q.lock().unwrap();
+        event_q.pop_front()
     }
     
     pub async fn wait_until_finish(self) {

@@ -1,4 +1,5 @@
 use reqwest::{Client, Method};
+use serde::Serialize;
 
 use crate::{endpoints, http::{self, QueryError}, Channel, MainUserData, UserData};
 
@@ -79,24 +80,55 @@ pub async fn get_channels_in_guild(
 //     todo!();
 // }
 
-// pub async fn send_message(
-//     client: Client,
-//     channel_id: &String,
-//     content: &String
-// ) -> Result<(), QueryError> {
-//     let res = client.post(endpoints::SEND_MESSAGE(&channel_id))
-//         .json(&MessagePostData::new(content.clone()))
-//         .send().await;
+// messaging utilities
+#[derive(Serialize)]
+struct MessagePostData {
+    content: String
+}
 
-//     // handle errors better MONKEY
-//     if let Err(e) = res {
-//         return  Err(QueryError::ReqwestError { err: e });
-//     }
+impl MessagePostData {
+    fn new(content: String) -> MessagePostData {
+        MessagePostData {
+            content
+        }
+    }
+}
+
+pub async fn start_typing(
+    client: Client,
+    channel_id: &String
+) -> Result<(), QueryError> {
+    let res = client.post(endpoints::START_TYPING(&channel_id))
+        .send().await;
+
+    // handle errors better MONKEY
+    if let Err(e) = res {
+        return  Err(QueryError::ReqwestError { err: e });
+    }
     
-//     validate_ratelimit(res.unwrap()).await?;
+    // http::validate_ratelimit(res.unwrap()).await?;
 
-//     Ok(())
-// }
+    Ok(())
+}
+
+pub async fn send_message(
+    client: Client,
+    channel_id: &String,
+    content: &String
+) -> Result<(), QueryError> {
+    let res = client.post(endpoints::SEND_MESSAGE(&channel_id))
+        .json(&MessagePostData::new(content.clone()))
+        .send().await;
+
+    // handle errors better MONKEY
+    if let Err(e) = res {
+        return  Err(QueryError::ReqwestError { err: e });
+    }
+    
+    http::validate_ratelimit(res.unwrap()).await?;
+
+    Ok(())
+}
 
 // // getting content
 // pub async fn messages_before(

@@ -13,6 +13,10 @@ pub fn SEND_MESSAGE(channel_id: &str) -> String {
     format!("{}/messages", CHANNEL(channel_id))
 }
 
+pub fn START_TYPING(channel_id: &str) -> String {
+    format!("{}/typing", CHANNEL(channel_id))
+}
+
 pub fn USER(user_id: &str) -> String {
     format!("https://discord.com/api/v9/users/{}", user_id)
 }

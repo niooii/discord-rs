@@ -98,7 +98,19 @@ pub async fn get_json(client: Client, url: &str, payload: Option<Payload>, metho
 }
 
 pub async fn validate_ratelimit(res: Response) -> Result<serde_json::Value, QueryError> {
-    let json = res.json::<serde_json::Value>().await.expect("could not turn response into json");
+    let response_text = res.text().await.unwrap();
+    // if response_text.is_empty() {
+    //     return 
+    // }
+    let json = match serde_json::from_str::<Value>(&response_text) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("failed to deserialize: {response_text}");
+            // TODO! check this out its not a reqwest error wtf
+            return Err(QueryError::SerdeError { err: e });
+        }
+    };
+
     if let Some(val) = json.get("retry_after") {
         return Err(QueryError::RateLimitReached { retry_after: val.as_f64().unwrap() });
     }

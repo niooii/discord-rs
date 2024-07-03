@@ -1,4 +1,4 @@
-use async_std::task;
+use tokio::time;
 use rand::Rng;
 use std::time::Instant;
 use std::{ops::Range, time::Duration};
@@ -6,17 +6,13 @@ use std::{ops::Range, time::Duration};
 pub struct Waiter {}
 
 impl Waiter {
-    pub fn new() -> Waiter {
-        Waiter {}
-    }
-
     // Seconds
-    pub async fn wait_random(range: Range<f32>) {
+    pub fn get_random_duration(range: Range<f32>) -> Duration {
         let mut rng = rand::thread_rng();
 
         let t = rng.gen_range(range);
 
-        task::sleep(Duration::from_secs_f32(t)).await;
+        Duration::from_secs_f32(t)
     }
 }
 

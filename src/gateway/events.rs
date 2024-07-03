@@ -113,12 +113,12 @@ pub enum GatewayRecieveEvent {
         dispatched_event: DispatchedEvent, 
         common: GatewayRecieveEventInfo
     },
-    /// Heartbeat event, you don't need to worry about this most of the time.
     /// Heartbeat sending is handled automatically.
     Hello {
         heartbeat_info: HeartbeatInfo, 
         common: GatewayRecieveEventInfo
     },
+    HeartbeatAck,
 }
  
 impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
@@ -177,7 +177,9 @@ impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
                     common,
                 }
             },
-            GatewayOpCode::HeartbeatAck => todo!(),
+            GatewayOpCode::HeartbeatAck => {
+                GatewayRecieveEvent::HeartbeatAck
+            },
             _ => {
                 panic!("Invalid opcode not handled...");
             }
