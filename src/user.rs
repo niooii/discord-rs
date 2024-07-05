@@ -4,7 +4,17 @@ use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use serde_repr::Deserialize_repr;
 use time::OffsetDateTime;
-use serde::{de::Error, Deserialize};
+use serde::{de::Error};
+use crate::{impl_deserialize_uint_tags, message::Emoji};
+
+#[derive(Deserialize_repr, Debug)]
+#[repr(u8)]
+pub enum NitroType {
+    None = 0,
+    NitroClassic = 1,
+    Nitro = 2,
+    NitroBasic = 3
+}
 
 #[derive(Debug, Deserialize)]
 pub struct MainUserData {
@@ -13,7 +23,7 @@ pub struct MainUserData {
     pub avatar: Option<String>,
     pub discriminator: String,
     pub public_flags: u64,
-    pub premium_type: u64,
+    pub premium_type: NitroType,
     pub flags: u64,
     pub banner: Option<String>,
     pub accent_color: Option<u32>,
@@ -31,6 +41,29 @@ pub struct MainUserData {
     pub authenticator_types: Vec<String>,
 }
 
+/// User data that is sent from the Gateway connection, which contains slightly different data.
+#[derive(Debug, Deserialize)]
+pub struct GatewayUserData {
+    pub id: String,
+    pub username: String,
+    pub avatar: Option<String>,
+    pub discriminator: String,
+    pub public_flags: u64,
+    pub premium_type: NitroType,
+    pub flags: u64,
+    pub banner: Option<String>,
+    pub accent_color: Option<u32>,
+    pub global_name: Option<String>,
+    pub avatar_decoration_data: Option<String>,
+    pub banner_color: Option<String>,
+    pub mfa_enabled: bool,
+    pub email: String,
+    pub verified: bool,
+    pub phone: Option<String>,
+    pub nsfw_allowed: bool,
+    pub bio: String,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct UserData {
     pub id: String,
@@ -39,14 +72,29 @@ pub struct UserData {
     pub avatar: Option<String>,
     pub discriminator: String,
     pub public_flags: Option<u64>,
-    // pub extra_info: Option<ExtraInfo>, // ExtraInfo as an Option
 }
+
+/// Used in responses where the api returns a partial user payload, which always should contain the id.
+#[derive(Deserialize, Debug)]
+pub struct UserDataLimited {
+    pub id: String,
+    pub username: Option<String>,
+    // This is the avatar hash. 
+    pub avatar: Option<String>,
+    pub discriminator: Option<String>,
+    pub public_flags: Option<u64>,
+}
+
+/* =========================================== */
+/* ----- RELATIONSHIP STRUCT DEFINITIONS ----- */
+/* =========================================== */
 
 #[derive(Deserialize, Debug)]
 pub struct AcceptedFriendRequest {
     pub nickname: Option<String>,
-    pub should_notify: bool,
-    #[serde(rename = "since")]
+    #[serde(default)]
+    pub should_notify: Option<bool>,
+    #[serde(rename = "since", with = "time::serde::iso8601")]
     pub friend_request_sent_date: OffsetDateTime,
     #[serde(rename = "user")]
     pub other_user: UserData
@@ -56,7 +104,7 @@ pub struct AcceptedFriendRequest {
 pub struct IncomingFriendRequest {
     pub nickname: Option<String>,
     pub should_notify: bool,
-    #[serde(rename = "since")]
+    #[serde(rename = "since", with = "time::serde::iso8601")]
     pub friend_request_sent_date: OffsetDateTime,
     #[serde(rename = "user")]
     pub from_user: UserData
@@ -65,9 +113,6 @@ pub struct IncomingFriendRequest {
 #[derive(Deserialize, Debug)]
 pub struct OutgoingFriendRequest {
     pub nickname: Option<String>,
-    pub should_notify: bool,
-    #[serde(rename = "since")]
-    pub friend_request_sent_date: OffsetDateTime,
     #[serde(rename = "user")]
     pub to_user: UserData
 }
@@ -81,57 +126,128 @@ pub enum RelationshipAddType {
 }
 
 #[derive(Debug)]
-pub enum RelationshipAddInfo {
+pub enum RelationshipAddEvent {
     Accepted(AcceptedFriendRequest),
     NewIncoming(IncomingFriendRequest),
     NewOutgoing(OutgoingFriendRequest)
 }
 
-impl<'de> serde::Deserialize<'de> for RelationshipAddInfo {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(d)?;
-        let radd_type = value.get("type").unwrap();
-        let radd_type = radd_type.as_u64().unwrap();
-
-        let relationship_add_info = match FromPrimitive::from_u8(radd_type as u8).unwrap() {
-            RelationshipAddType::Accepted => {
-                let accepted_data = AcceptedFriendRequest::deserialize(value)
-                .map_err(D::Error::custom)?;
-                RelationshipAddInfo::Accepted(accepted_data)
-            },
-            RelationshipAddType::NewIncoming => {
-                let incoming_data = IncomingFriendRequest::deserialize(value)
-                .map_err(D::Error::custom)?;
-                RelationshipAddInfo::NewIncoming(incoming_data)
-            },
-            RelationshipAddType::NewOutgoing => {
-                let outgoing_data = OutgoingFriendRequest::deserialize(value)
-                .map_err(D::Error::custom)?;
-                RelationshipAddInfo::NewOutgoing(outgoing_data)
-            },
-        };
-
-        Ok(relationship_add_info)
+impl_deserialize_uint_tags!(
+    "type",
+    RelationshipAddType,
+    RelationshipAddEvent,
+    {
+        Accepted => AcceptedFriendRequest,
+        NewIncoming => IncomingFriendRequest,
+        NewOutgoing => OutgoingFriendRequest,
     }
+);
+
+#[derive(Deserialize, Debug)]
+pub struct FriendRemoved {
+    #[serde(rename = "id")]
+    other_user_id: String,
+    nickname: Option<String>,
+    #[serde(rename = "since", with = "time::serde::iso8601")]
+    friends_since: OffsetDateTime
 }
 
-// TODO! everythign here 
+#[derive(Deserialize, Debug)]
+pub struct IncomingRequestDeclinedOrCanceled {
+    #[serde(rename = "id")]
+    other_user_id: String,
+    nickname: Option<String>,
+    #[serde(rename = "since", with = "time::serde::iso8601")]
+    friend_request_sent_date: OffsetDateTime
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OutgoingRequestCanceled {
+    #[serde(rename = "id")]
+    other_user_id: String,
+    nickname: Option<String>,
+}
+
 #[derive(Debug, FromPrimitive)]
 #[repr(u8)]
 pub enum RelationshipRemoveType {
     Removed = 1,
     /// wtf discord
-    DeclinedIncomingOrOtherPersonCancelsOutgoing = 3,
-    CancelOutgoing = 4,
+    IncomingDeclinedOrCanceled = 3,
+    OutgoingCanceled = 4,
 }
 
-// // Define the ExtraInfo struct with additional fields
-// #[derive(Debug, Deserialize)]
-// pub struct ExtraInfo {
-//     bot: Option<bool>,
-//     premium_type: Option<u64>,
-//     flags: Option<u64>,
-//     banner: Option<String>,
-//     accent_color: Option<u64>, // Change to u64 for accent_color
-//     banner_color: Option<String>,
-// }
+#[derive(Debug)]
+pub enum RelationshipRemoveEvent {
+    Removed(FriendRemoved),
+    IncomingDeclinedOrCanceled(IncomingRequestDeclinedOrCanceled),
+    OutgoingCanceled(OutgoingRequestCanceled)
+}
+
+impl_deserialize_uint_tags!(
+    "type",
+    RelationshipRemoveType,
+    RelationshipRemoveEvent,
+    {
+        Removed => FriendRemoved,
+        IncomingDeclinedOrCanceled => IncomingRequestDeclinedOrCanceled,
+        OutgoingCanceled => OutgoingRequestCanceled,
+    }
+);
+
+/* ================================================== */
+/* ----- ACTIVITY / PRESENCE STRUCT DEFINITIONS ----- */
+/* ================================================== */
+
+pub mod activity {
+    use serde::Deserialize;
+    use serde_repr::Deserialize_repr;
+    use time::OffsetDateTime;
+
+    #[derive(Deserialize, Debug)]
+    pub struct Assets {
+        pub large_image: String,
+        pub large_text: String,
+        pub small_image: String,
+        pub small_text: String
+    }
+
+    #[derive(Deserialize, Debug)]
+    pub struct Timestamps {
+        #[serde(with = "crate::serde_utils::unix_millis")]
+        pub start: OffsetDateTime,
+        #[serde(default, with = "crate::serde_utils::unix_millis::option")]
+        pub end: Option<OffsetDateTime>,
+    }
+
+    #[derive(Deserialize_repr, Debug)]
+    #[repr(u8)]
+    pub enum Type {
+        Game = 0,
+        Streaming = 1,
+        Listening = 2,
+        Watching = 3,
+        Custom = 4,
+        Competing = 5
+    }
+
+    // TODO! add better support for activity stuff
+    #[derive(Deserialize, Debug)]
+    pub struct Activity {
+        pub r#type: Type,
+        pub application_id: Option<String>,
+        // pub emoji: Option<Emoji>,
+        pub name: Option<String>,
+        #[serde(rename = "state")]
+        pub text: Option<String>,
+        pub details: Option<String>,
+        pub assets: Option<Assets>,
+        #[serde(with = "crate::serde_utils::unix_millis")]
+        pub created_at: OffsetDateTime,
+        pub timestamps: Option<Timestamps>,
+        pub buttons: Option<Vec<String>>,
+        pub id: Option<String>,
+        pub session_id: Option<String>,
+        pub url: Option<String>
+    }
+}

@@ -11,6 +11,8 @@ pub mod permissions;
 pub mod gateway;
 pub mod guild;
 pub mod voice;
+#[macro_use]
+pub mod serde_utils;
 
 use zstd::stream::read::Decoder;
 use crate::http::validate_ratelimit;

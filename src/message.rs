@@ -5,7 +5,14 @@ use serde::{de::Error, Deserialize};
 use serde_json::Value;
 use time::OffsetDateTime;
 
-use crate::{guild::{GuildMemberData, InteractionData, InteractionMetadata}, user::UserData, voice::PrivateCallData};
+use crate::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
+
+#[derive(Deserialize, Debug)]
+pub struct Emoji {
+    animated: bool,
+    id: String,
+    name: String
+}
 
 /// Refer to the discord documentation for more info: 
 /// https://discord.com/developers/docs/resources/channel#message-object-message-types
@@ -120,8 +127,8 @@ pub struct ChatInputCommandData {
     #[serde(default, with = "time::serde::iso8601::option")]
     pub edited_timestamp: Option<OffsetDateTime>,
     pub guild_id: String,
-    pub interaction: InteractionData,
-    pub interaction_metadata: InteractionMetadata,
+    pub interaction: Data,
+    pub interaction_metadata: Metadata,
     pub member: Option<GuildMemberData>,
     pub mention_everyone: bool,
     pub mention_roles: Vec<String>,
@@ -155,11 +162,11 @@ pub enum Message {
 impl<'de> serde::Deserialize<'de> for Message {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
+        let mut clipboard = Clipboard::new().unwrap();
+        clipboard.set_text(serde_json::to_string_pretty(&value).unwrap());
         let message_type = value.get("type").unwrap();
         let message_type = message_type.as_u64().unwrap();
         let message_type = FromPrimitive::from_u8(message_type as u8).unwrap();
-        let mut clipboard = Clipboard::new().unwrap();
-        clipboard.set_text(serde_json::to_string_pretty(&value).unwrap());
         let message = match message_type {
             MessageType::Default => {
                 let default_msg_data = DefaultMessageData::deserialize(value).map_err(D::Error::custom)?;

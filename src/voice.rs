@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use time::OffsetDateTime;
 
+use crate::guild::GuildMemberData;
+
 #[derive(Deserialize, Debug)]
 pub struct PrivateCallData {
     #[serde(with = "time::serde::iso8601::option")]
@@ -11,7 +13,7 @@ pub struct PrivateCallData {
 
 #[derive(Deserialize, Debug)]
 pub struct UserVoiceState {
-    channel_id: String,
+    channel_id: Option<String>,
     deaf: bool,
     mute: bool,
     #[serde(with = "time::serde::iso8601::option")]
@@ -21,5 +23,5 @@ pub struct UserVoiceState {
     self_video: bool,
     session_id: String,
     suppress: bool,
-    user_id: String
+    user_id: String,
 }

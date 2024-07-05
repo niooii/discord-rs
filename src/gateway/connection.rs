@@ -156,23 +156,28 @@ impl GatewayConnection {
                         match recv_event {
                             Ok(e) => {
                                 let mut curr_sequence = curr_sequence.lock().unwrap();
+                                let mut update_sequence = |common: &GatewayRecieveEventInfo| {
+                                    *curr_sequence = common.sequence;
+                                };
                                 match e {
                                     // Heartbeats are handled automatically.
                                     GatewayRecieveEvent::Hello { heartbeat_info, common } => {
+                                        update_sequence(&common);
                                         let mut heartbeat_interval = heartbeat_interval.lock().unwrap();
-                                        println!("heartbeat interval: {}ms", heartbeat_info.heartbeat_interval);
                                         *heartbeat_interval = heartbeat_info.heartbeat_interval;
-                                        *curr_sequence = common.sequence;
                                     },
                                     // TODO! be sure to handle the RESUME event, as it sends a list of events
                                     // the only events that the user should be notified about.
                                     GatewayRecieveEvent::GeneralEvent { dispatched_event, common } => {
-                                        *curr_sequence = common.sequence;
+                                        update_sequence(&common);
                                         let mut event_q = event_q.lock().unwrap();
                                         event_q.push_back(dispatched_event);
                                     }
-                                    GatewayRecieveEvent::HeartbeatAck => {
-
+                                    GatewayRecieveEvent::HeartbeatAck { common } => {
+                                        update_sequence(&common);
+                                    },
+                                    GatewayRecieveEvent::UnwantedEvent { common } => {
+                                        update_sequence(&common);
                                     },
                                 };
                             },
