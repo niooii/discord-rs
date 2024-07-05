@@ -4,8 +4,8 @@ use num_derive::FromPrimitive;
 use serde::{de::Error, Deserialize};
 use serde_json::Value;
 use time::OffsetDateTime;
-
-use crate::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
+use crate::wrapper;
+use wrapper::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
 
 #[derive(Deserialize, Debug)]
 pub struct Emoji {

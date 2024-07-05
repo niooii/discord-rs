@@ -5,7 +5,7 @@ pub mod endpoints;
 pub mod http;
 pub mod user;
 pub mod util;
-pub mod wrapper;
+pub mod api;
 pub mod message;
 pub mod permissions;
 pub mod gateway;
