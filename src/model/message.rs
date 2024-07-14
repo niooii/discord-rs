@@ -4,8 +4,7 @@ use num_derive::FromPrimitive;
 use serde::{de::Error, Deserialize};
 use serde_json::Value;
 use time::OffsetDateTime;
-use crate::wrapper;
-use wrapper::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
+use crate::model::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
 
 #[derive(Deserialize, Debug)]
 pub struct Emoji {
@@ -157,8 +156,11 @@ pub enum Message {
     UserJoin(UserJoinData),
     Reply(ReplyMessageData),
     ChatInputCommand(ChatInputCommandData),
+
+    Unknown
 }
 
+// TODO!
 impl<'de> serde::Deserialize<'de> for Message {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
@@ -172,29 +174,29 @@ impl<'de> serde::Deserialize<'de> for Message {
                 let default_msg_data = DefaultMessageData::deserialize(value).map_err(D::Error::custom)?;
                 Message::Default(default_msg_data)
             }
-            MessageType::RecipientAdd => todo!(),
-            MessageType::RecipientRemove => todo!(),
+            // MessageType::RecipientAdd => todo!(),
+            // MessageType::RecipientRemove => todo!(),
             MessageType::Call => {
                 let call_msg_data = CallMessageData::deserialize(value).map_err(D::Error::custom)?;
                 Message::Call(call_msg_data)
             },
-            MessageType::ChannelNameChange => todo!(),
-            MessageType::ChannelIconChange => todo!(),
-            MessageType::ChannelPinnedMessage => todo!(),
+            // MessageType::ChannelNameChange => todo!(),
+            // MessageType::ChannelIconChange => todo!(),
+            // MessageType::ChannelPinnedMessage => todo!(),
             MessageType::UserJoin => {
                 let user_join_data = UserJoinData::deserialize(value).map_err(D::Error::custom)?;
                 Message::UserJoin(user_join_data)
             },
-            MessageType::GuildBoost => todo!(),
-            MessageType::GuildBoostTier1 => todo!(),
-            MessageType::GuildBoostTier2 => todo!(),
-            MessageType::GuildBoostTier3 => todo!(),
-            MessageType::ChannelFollowAdd => todo!(),
-            MessageType::GuildDiscoveryDisqualified => todo!(),
-            MessageType::GuildDiscoveryRequalified => todo!(),
-            MessageType::GuildDiscoveryGracePeriodInitialWarning => todo!(),
-            MessageType::GuildDiscoveryGracePeriodFinalWarning => todo!(),
-            MessageType::ThreadCreated => todo!(),
+            // MessageType::GuildBoost => todo!(),
+            // MessageType::GuildBoostTier1 => todo!(),
+            // MessageType::GuildBoostTier2 => todo!(),
+            // MessageType::GuildBoostTier3 => todo!(),
+            // MessageType::ChannelFollowAdd => todo!(),
+            // MessageType::GuildDiscoveryDisqualified => todo!(),
+            // MessageType::GuildDiscoveryRequalified => todo!(),
+            // MessageType::GuildDiscoveryGracePeriodInitialWarning => todo!(),
+            // MessageType::GuildDiscoveryGracePeriodFinalWarning => todo!(),
+            // MessageType::ThreadCreated => todo!(),
             MessageType::Reply => {
                 let msg_reply_data = ReplyMessageData::deserialize(value).map_err(D::Error::custom)?;
                 Message::Reply(msg_reply_data)
@@ -203,22 +205,23 @@ impl<'de> serde::Deserialize<'de> for Message {
                 let chat_input_cmd_data = ChatInputCommandData::deserialize(value).map_err(D::Error::custom)?;
                 Message::ChatInputCommand(chat_input_cmd_data)
             },
-            MessageType::ThreadStarterMessage => todo!(),
-            MessageType::GuildInviteReminder => todo!(),
-            MessageType::ContextMenuCommand => todo!(),
-            MessageType::AutoModerationAction => todo!(),
-            MessageType::RoleSubscriptionPurchase => todo!(),
-            MessageType::InteractionPremiumUpsell => todo!(),
-            MessageType::StageStart => todo!(),
-            MessageType::StageEnd => todo!(),
-            MessageType::StageSpeaker => todo!(),
-            MessageType::StageTopic => todo!(),
-            MessageType::GuildApplicationPremiumSubscription => todo!(),
-            MessageType::GuildIncidentAlertModeEnabled => todo!(),
-            MessageType::GuildIncidentAlertModeDisabled => todo!(),
-            MessageType::GuildIncidentReportRaid => todo!(),
-            MessageType::GuildIncidentReportFalseAlarm => todo!(),
-            MessageType::PurchaseNotification => todo!(),
+            // MessageType::ThreadStarterMessage => todo!(),
+            // MessageType::GuildInviteReminder => todo!(),
+            // MessageType::ContextMenuCommand => todo!(),
+            // MessageType::AutoModerationAction => todo!(),
+            // MessageType::RoleSubscriptionPurchase => todo!(),
+            // MessageType::InteractionPremiumUpsell => todo!(),
+            // MessageType::StageStart => todo!(),
+            // MessageType::StageEnd => todo!(),
+            // MessageType::StageSpeaker => todo!(),
+            // MessageType::StageTopic => todo!(),
+            // MessageType::GuildApplicationPremiumSubscription => todo!(),
+            // MessageType::GuildIncidentAlertModeEnabled => todo!(),
+            // MessageType::GuildIncidentAlertModeDisabled => todo!(),
+            // MessageType::GuildIncidentReportRaid => todo!(),
+            // MessageType::GuildIncidentReportFalseAlarm => todo!(),
+            // MessageType::PurchaseNotification => todo!(),
+            _ => Message::Unknown
         };
         Ok(message)
     }

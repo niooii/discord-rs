@@ -1,7 +1,10 @@
 use reqwest::{Client, Method};
 use serde::Serialize;
+use crate::model::channel::Channel;
+use crate::model::user::MainUserData;
+use crate::model::{user::UserData};
 
-use crate::{endpoints, http::{self, QueryError}, Channel, MainUserData, UserData};
+use crate::{endpoints, http::{self, QueryError}};
 
 pub async fn get_authenticated_user_data(
     client: Client
@@ -34,31 +37,15 @@ pub async fn get_channels_in_guild(
     http::get_data::<Vec<Channel>>(client, &endpoints::GUILD_CHANNELS(guild_id), None, Method::GET).await
 }
 
-// pub async fn get_private_channels(
-//     client: Client
-// ) -> Result<Vec<Channel>, QueryError> {
-//     let mut channels: Vec<Channel> = Vec::new();
+pub async fn get_private_channels(
+    client: Client
+) -> Result<Vec<Channel>, QueryError> {
+    let json: serde_json::Value = http::get_json(client, &endpoints::PRIVATE_CHANNELS, None, Method::GET).await?;
 
-//     let req_client = client;
+    // println!("{:?}", serde_json::to_string_pretty(&json));
 
-//     let json = http::get_json(&req_client, &endpoints::CHANNELS).await?;
-
-//     let json_array = json.as_array().unwrap();
-
-//     for json in json_array {
-//         if !json["type"].is_number() {
-//             return Err(QueryError::Other { error: "type field is not number (fix this message later)".to_string() });
-//         }
-
-//         let channel_type = json["type"].as_number().unwrap().as_u64().unwrap();
-    
-//         channels.push(
-//             serde_json::from_value::<Channel>(json.clone()).unwrap()
-//         );
-//     }
-
-//     Ok(channels)
-// }
+    Ok(serde_json::from_value::<Vec<Channel>>(json).unwrap())
+}
 
 // /* 
 // Try to use get_private_text_channels and cache the results to minimize api calls.

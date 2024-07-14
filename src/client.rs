@@ -2,7 +2,7 @@
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-
+use crate::model::*;
 use err_derive::Error;
 use rand::prelude::*;
 use rand::SeedableRng;
@@ -12,16 +12,12 @@ use crate::http;
 use crate::http::validate_ratelimit;
 use http::QueryError;
 use serde::Serialize;
-use crate::user::*;
-use crate::channel;
 use channel::*;
 use crate::endpoints;
 
 use num_derive::FromPrimitive;    
 use num_traits::FromPrimitive;
 
-use crate::channel::{*};
-use crate::user::*;
 
 // DISCORD STRUCTS
 

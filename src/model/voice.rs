@@ -1,7 +1,8 @@
 use serde::Deserialize;
 use time::OffsetDateTime;
 
-use crate::guild::GuildMemberData;
+use crate::model;
+use model::guild::GuildMemberData;
 
 #[derive(Deserialize, Debug)]
 pub struct PrivateCallData {

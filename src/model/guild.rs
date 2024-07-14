@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use time::OffsetDateTime;
-use crate::UserData;
+use crate::model::*;
+use user::UserData;
 
 #[derive(Debug, Deserialize)]
 pub struct GuildMemberData {
@@ -20,9 +21,10 @@ pub struct GuildMemberData {
 }
 
 pub mod interaction {
+    use crate::model::*;
+    use user::UserData;
     use serde::Deserialize;
     use super::GuildMemberData;
-    use crate::UserData;
 
     /// Pretty sure users don't really need to know about this...
     #[derive(Debug, Deserialize)]

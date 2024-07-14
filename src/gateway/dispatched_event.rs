@@ -1,6 +1,9 @@
+use message::MessageAttachment;
 use serde::Deserialize;
+use crate::model::*;
 
-use crate::{guild::GuildMemberData, message::{GeneralMessageData, Message, MessageComponent, MessageEmbed}, voice::UserVoiceState, activity::*, Channel, GatewayUserData, MainUserData, RelationshipAddEvent, RelationshipAddType, RelationshipRemoveEvent, RelationshipRemoveType, UserDataLimited};
+use crate::model;
+use model::{guild::GuildMemberData, message::{GeneralMessageData, Message, MessageComponent, MessageEmbed}, voice::UserVoiceState, channel::Channel, user::{activity::*, GatewayUserData, MainUserData, RelationshipAddEvent, RelationshipAddType, RelationshipRemoveEvent, RelationshipRemoveType, UserDataLimited}};
 
 use super::{error::GatewayError, events::GatewayReceiveEventRaw};
 
@@ -19,8 +22,9 @@ pub enum DispatchedEvent {
         message_id: String,
         channel_id: String,
         guild_id: String,
-        embeds: Vec<MessageEmbed>,
-        components: Vec<MessageComponent>,
+        embeds: Option<Vec<MessageEmbed>>,
+        components: Option<Vec<MessageComponent>>,
+        attachments: Option<Vec<MessageAttachment>>,
     },
     /// Contains the initial state information
     // TODO! this contains a bit too much information. Maybe handle full deserialization another day. 
@@ -28,45 +32,45 @@ pub enum DispatchedEvent {
         user: GatewayUserData
     },
     /// Defines the heartbeat interval
-    // Hello {
+    Hello {
         
-    // },
+    },
     /// Response to Resume
-    // Resumed {
+    Resumed {
         
-    // },
+    },
     /// Server is going away, client should reconnect to gateway and resume
-    // Reconnect {
+    Reconnect {
         
-    // },
+    },
     /// Failure response to Identify or Resume or invalid active session
-    // InvalidSession {
+    InvalidSession {
         
-    // },
+    },
     /// Application command permission was updated
-    // ApplicationCommandPermissionsUpdate {
+    ApplicationCommandPermissionsUpdate {
         
-    // },
+    },
     /// Auto Moderation rule was created
-    // AutoModerationRuleCreate {
+    AutoModerationRuleCreate {
         
-    // },
+    },
     /// Auto Moderation rule was updated
-    // AutoModerationRuleUpdate {
+    AutoModerationRuleUpdate {
         
-    // },
+    },
     /// Auto Moderation rule was deleted
-    // AutoModerationRuleDelete {
+    AutoModerationRuleDelete {
         
-    // },
+    },
     /// Auto Moderation rule was triggered and an action was executed (e.g. a message was blocked)
-    // AutoModerationActionExecution {
+    AutoModerationActionExecution {
         
-    // },
+    },
     /// New guild channel created
-    // ChannelCreate {
+    ChannelCreate {
         
-    // },
+    },
     /// Channel was updated
     ChannelUpdate {
         #[serde(flatten)]
@@ -80,205 +84,205 @@ pub enum DispatchedEvent {
         version: u64  
     },
     /// Message was pinned or unpinned
-    // ChannelPinsUpdate {
+    ChannelPinsUpdate {
         
-    // },
+    },
     /// Thread created, also sent when being added to a private thread
-    // ThreadCreate {
+    ThreadCreate {
         
-    // },
+    },
     /// Thread was updated
-    // ThreadUpdate {
+    ThreadUpdate {
         
-    // },
+    },
     /// Thread was deleted
-    // ThreadDelete {
+    ThreadDelete {
         
-    // },
+    },
     /// Sent when gaining access to a channel, contains all active threads in that channel
-    // ThreadListSync {
+    ThreadListSync {
         
-    // },
+    },
     /// Thread member for the current user was updated
-    // ThreadMemberUpdate {
+    ThreadMemberUpdate {
         
-    // },
+    },
     /// Some user(s) were added to or removed from a thread
-    // ThreadMembersUpdate {
+    ThreadMembersUpdate {
         
-    // },
+    },
     /// Entitlement was created
-    // EntitlementCreate {
+    EntitlementCreate {
         
-    // },
+    },
     /// Entitlement was updated or renewed
-    // EntitlementUpdate {
+    EntitlementUpdate {
         
-    // },
+    },
     /// Entitlement was deleted
-    // EntitlementDelete {
+    EntitlementDelete {
         
-    // },
+    },
     /// Lazy-load for unavailable guild, guild became available, or user joined a new guild
-    // GuildCreate {
+    GuildCreate {
         
-    // },
+    },
     /// Guild was updated
-    // GuildUpdate {
+    GuildUpdate {
         
-    // },
+    },
     /// Guild became unavailable, or user left/was removed from a guild
-    // GuildDelete {
+    GuildDelete {
         
-    // },
+    },
     /// A guild audit log entry was created
-    // GuildAuditLogEntryCreate {
+    GuildAuditLogEntryCreate {
         
-    // },
+    },
     /// User was banned from a guild
-    // GuildBanAdd {
+    GuildBanAdd {
         
-    // },
+    },
     /// User was unbanned from a guild
-    // GuildBanRemove {
+    GuildBanRemove {
         
-    // },
+    },
     /// Guild emojis were updated
-    // GuildEmojisUpdate {
+    GuildEmojisUpdate {
         
-    // },
+    },
     /// Guild stickers were updated
-    // GuildStickersUpdate {
+    GuildStickersUpdate {
         
-    // },
+    },
     /// Guild integration was updated
-    // GuildIntegrationsUpdate {
+    GuildIntegrationsUpdate {
         
-    // },
+    },
     /// New user joined a guild
-    // GuildMemberAdd {
+    GuildMemberAdd {
         
-    // },
+    },
     /// User was removed from a guild
-    // GuildMemberRemove {
+    GuildMemberRemove {
         
-    // },
+    },
     /// Guild member was updated
-    // GuildMemberUpdate {
+    GuildMemberUpdate {
         
-    // },
+    },
     /// Response to Request Guild Members
-    // GuildMembersChunk {
+    GuildMembersChunk {
         
-    // },
+    },
     /// Guild role was created
-    // GuildRoleCreate {
+    GuildRoleCreate {
         
-    // },
+    },
     /// Guild role was updated
-    // GuildRoleUpdate {
+    GuildRoleUpdate {
         
-    // },
+    },
     /// Guild role was deleted
-    // GuildRoleDelete {
+    GuildRoleDelete {
         
-    // },
+    },
     /// Guild scheduled event was created
-    // GuildScheduledEventCreate {
+    GuildScheduledEventCreate {
         
-    // },
+    },
     /// Guild scheduled event was updated
-    // GuildScheduledEventUpdate {
+    GuildScheduledEventUpdate {
         
-    // },
+    },
     /// Guild scheduled event was deleted
-    // GuildScheduledEventDelete {
+    GuildScheduledEventDelete {
         
-    // },
+    },
     /// User subscribed to a guild scheduled event
-    // GuildScheduledEventUserAdd {
+    GuildScheduledEventUserAdd {
         
-    // },
+    },
     /// User unsubscribed from a guild scheduled event
-    // GuildScheduledEventUserRemove {
+    GuildScheduledEventUserRemove {
         
-    // },
+    },
     /// Guild integration was created
-    // IntegrationCreate {
+    IntegrationCreate {
         
-    // },
+    },
     /// Guild integration was updated
-    // IntegrationUpdate {
+    IntegrationUpdate {
         
-    // },
+    },
     /// Guild integration was deleted
-    // IntegrationDelete {
+    IntegrationDelete {
         
-    // },
+    },
     /// User used an interaction, such as an Application Command
-    // InteractionCreate {
+    InteractionCreate {
         
-    // },
+    },
     /// Invite to a channel was created
-    // InviteCreate {
+    InviteCreate {
         
-    // },
+    },
     /// Invite to a channel was deleted
-    // InviteDelete {
+    InviteDelete {
         
-    // },
+    },
     /// Message was deleted
-    // MessageDelete {
+    MessageDelete {
         
-    // },
+    },
     /// Multiple messages were deleted at once
-    // MessageDeleteBulk {
+    MessageDeleteBulk {
         
-    // },
+    },
     /// User reacted to a message
-    // MessageReactionAdd {
+    MessageReactionAdd {
         
-    // },
+    },
     /// User removed a reaction from a message
-    // MessageReactionRemove {
+    MessageReactionRemove {
         
-    // },
+    },
     /// All reactions were explicitly removed from a message
-    // MessageReactionRemoveAll {
+    MessageReactionRemoveAll {
         
-    // },
+    },
     /// All reactions for a given emoji were explicitly removed from a message
-    // MessageReactionRemoveEmoji {
+    MessageReactionRemoveEmoji {
         
-    // },
+    },
     /// User was updated
     PresenceUpdate {
-        activities: Vec<Activity>,
-        broadcast: Option<bool>,
-        guild_id: Option<String>,
-        user: UserDataLimited,
-        status: String
+        // activities: Vec<Activity>,
+        // broadcast: Option<bool>,
+        // guild_id: Option<String>,
+        // user: UserDataLimited,
+        // status: String
     },
     /// Stage instance was created
-    // StageInstanceCreate {
+    StageInstanceCreate {
         
-    // },
+    },
     /// Stage instance was updated
-    // StageInstanceUpdate {
+    StageInstanceUpdate {
         
-    // },
+    },
     /// Stage instance was deleted or closed
-    // StageInstanceDelete {
+    StageInstanceDelete {
         
-    // },
+    },
     /// User started typing in a channel
-    // TypingStart {
+    TypingStart {
         
-    // },
+    },
     /// Properties about the user changed
-    // UserUpdate {
+    UserUpdate {
         
-    // },
+    },
     /// Someone joined, left, or moved a voice channel
     VoiceStateUpdate {
         #[serde(flatten)]
@@ -287,13 +291,13 @@ pub enum DispatchedEvent {
         member: Option<GuildMemberData>
     },
     /// Guild's voice server was updated
-    // VoiceServerUpdate {
+    VoiceServerUpdate {
         
-    // },
+    },
     /// Guild channel webhook was created, updated, or deleted
-    // WebhooksUpdate {
+    WebhooksUpdate {
         
-    // },
+    },
     /// User voted on a poll
     MessagePollVoteAdd {
         answer_id: u16,
@@ -303,9 +307,9 @@ pub enum DispatchedEvent {
         user_id: String,
     },
     /// User removed a vote on a poll
-    // MessagePollVoteRemove {
+    MessagePollVoteRemove {
         
-    // },
+    },
     /* ========================================================================================= */
     /* ----- THE FOLLOWING ARE ONLY FOR USER ACCOUNTS, AND ARE NOT DEFIEND IN THE API DOCS ----- */
     /* ========================================================================================= */
@@ -366,5 +370,8 @@ pub enum DispatchedEvent {
     },
     ContentInventoryInboxStale {
         
+    },
+    AudioSettingsUpdate {
+
     }
 }

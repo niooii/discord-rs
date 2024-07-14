@@ -1,16 +1,12 @@
 #![allow(dead_code)]
-pub mod channel;
 pub mod client;
 pub mod endpoints;
 pub mod http;
-pub mod user;
 pub mod util;
 pub mod api;
-pub mod message;
-pub mod permissions;
 pub mod gateway;
-pub mod guild;
-pub mod voice;
+pub mod model;
+
 #[macro_use]
 pub mod serde_utils;
 
@@ -18,8 +14,6 @@ use zstd::stream::read::Decoder;
 use crate::http::validate_ratelimit;
 use http::QueryError;
 use serde::Serialize;
-use crate::user::*;
-use channel::*;
 use crate::client::DiscordClient;
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
 use num_traits::FromPrimitive;

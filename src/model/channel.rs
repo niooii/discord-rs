@@ -4,7 +4,9 @@ use num_derive::FromPrimitive;
 use serde::Deserialize;
 use serde_json::Value;
 use time::OffsetDateTime;
-use crate::{permissions::PermissionOverwrite, user::*};
+use crate::serde_utils;
+use crate::model;
+use model::{permissions::PermissionOverwrite, user::*};
 
 #[derive(Deserialize, Debug)]
 pub struct GuildForumTag {
@@ -40,7 +42,8 @@ pub struct DmData {
     pub flags: u64,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub last_pin_timestamp: Option<OffsetDateTime>,
-    pub recipients: Vec<UserData>,
+    #[serde(rename = "recipients", with = "serde_utils::deserialize_single_element")]
+    pub recipient: UserData,
 }
 
 #[derive(Deserialize, Debug)]
@@ -98,7 +101,7 @@ pub struct GuildAnnouncementData {
     #[serde(rename = "parent_id")]
     pub category_id: Option<String>,
     pub rate_limit_per_user: u32,
-    pub topic: String,
+    pub topic: Option<String>,
     pub position: u32,
     pub permission_overwrites: Vec<PermissionOverwrite>,
     pub nsfw: bool,
@@ -115,7 +118,7 @@ pub struct GuildForumData {
     #[serde(rename = "parent_id")]
     pub category_id: String,
     pub rate_limit_per_user: u32,
-    pub topic: String,
+    pub topic: Option<String>,
     pub position: u32,
     pub permission_overwrites: Vec<PermissionOverwrite>,
     pub nsfw: bool,
@@ -177,19 +180,25 @@ impl<'de> serde::Deserialize<'de> for Channel {
         let channel_type = value.get("type").unwrap();
         let channel_type = channel_type.as_u64().unwrap();
         let channel_type = FromPrimitive::from_u8(channel_type as u8).unwrap();
+        let mut clipboard = arboard::Clipboard::new().unwrap();
+        clipboard.set_text(serde_json::to_string_pretty(&value).unwrap()).unwrap();
         let channel = match channel_type {
             ChannelType::GuildText => {
                 let data = GuildTextData::deserialize(value);
                 Channel::GuildText(data.unwrap())
             },
             ChannelType::Dm => {
-                todo!()
+                let data = DmData::deserialize(value);
+                Channel::Dm(data.unwrap())
             },
             ChannelType::GuildVoice => {
                 let data = GuildVoiceData::deserialize(value);
                 Channel::GuildVoice(data.unwrap())
             },
-            ChannelType::GroupDm => todo!(),
+            ChannelType::GroupDm => {
+                let data = GroupDmData::deserialize(value);
+                Channel::GroupDm(data.unwrap())
+            },
             ChannelType::GuildCategory => {
                 let data = GuildCategoryData::deserialize(value);
                 Channel::GuildCategory(data.unwrap())

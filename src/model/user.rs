@@ -5,7 +5,7 @@ use serde_json::Value;
 use serde_repr::Deserialize_repr;
 use time::OffsetDateTime;
 use serde::{de::Error};
-use crate::{impl_deserialize_uint_tags, message::Emoji};
+use crate::{impl_deserialize_uint_tags, model::message::Emoji};
 
 #[derive(Deserialize_repr, Debug)]
 #[repr(u8)]
@@ -228,7 +228,8 @@ pub mod activity {
         Listening = 2,
         Watching = 3,
         Custom = 4,
-        Competing = 5
+        Competing = 5,
+        ChannelStatus = 6
     }
 
     // TODO! add better support for activity stuff
