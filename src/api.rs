@@ -20,7 +20,7 @@ pub enum DiscordError {
     #[error("")]
     Other {
         message: String,
-        
+        code: u64
     }
 }
 
