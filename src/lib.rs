@@ -8,18 +8,35 @@ pub mod model;
 #[macro_use]
 pub mod serde_utils;
 use std::ops::{Sub, SubAssign};
-
-use model::{channel::Channel, message::DefaultMessageData, user::{MainUserData, UserData}, Snowflake};
+use futures_util::Stream;
+use model::{channel::Channel, message::{DefaultMessageData, Message}, user::{MainUserData, UserData}, Snowflake};
 use tokio::time::Duration;
 use crate::client::DiscordClient;
 use api::Result;
+use async_stream::{stream, try_stream};
 
 pub enum MessageSendTime {
-    INSTANT,
-    FAST,
-    MEDIUM,
-    SLOW,
-    CUSTOM { duration: Duration }
+    /// The message will send without delay.
+    Instant,
+    /// 15 characters typed per second.
+    Fast,
+    /// 10 characters typed per second.
+    Medium,
+    /// 5 characters typed per second.
+    Slow,
+    /// Specify how long the message takes to type.
+    CustomDur { duration: Duration },
+    /// Specify characters per second.
+    CustomCps { cps: u16 }
+}
+
+pub enum MessageFetchRate {
+    // 50 per request, default for the official client.
+    Default,
+    // 100 per request, max that discord allows.
+    Max,
+    // Must be above 0 and under 100.
+    Custom
 }
 
 impl DiscordClient {
@@ -35,13 +52,24 @@ impl DiscordClient {
         api::get_private_channels(self.req_client()).await
     }
 
+    pub async fn messages(&self, channel_id: &Snowflake, fetch_rate: MessageFetchRate) 
+        -> impl Stream<Item = Result<Vec<Message>>> {
+        try_stream! {
+            
+            loop {
+                yield Vec::new();
+            }
+        }
+    }
+
     pub async fn send_message(&self, channel_id: &Snowflake, content: &String, send_time: MessageSendTime) -> Result<DefaultMessageData> {
         let mut typing_duration = match send_time {
-            MessageSendTime::INSTANT => return api::send_message(self.req_client(), channel_id, content).await,
-            MessageSendTime::FAST => todo!(),
-            MessageSendTime::MEDIUM => todo!(),
-            MessageSendTime::SLOW => todo!(),
-            MessageSendTime::CUSTOM { duration } => duration,
+            MessageSendTime::Instant => return api::send_message(self.req_client(), channel_id, content).await,
+            MessageSendTime::Fast => Duration::from_secs_f32(content.len() as f32 / 15_f32),
+            MessageSendTime::Medium => Duration::from_secs_f32(content.len() as f32 / 10_f32),
+            MessageSendTime::Slow => Duration::from_secs_f32(content.len() as f32 / 5_f32),
+            MessageSendTime::CustomDur { duration } => duration,
+            MessageSendTime::CustomCps { cps } => Duration::from_secs_f32(content.len() as f32 / cps as f32) 
         };
 
         let wait_cycle_duration = Duration::from_secs(11);
