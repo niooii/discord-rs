@@ -108,7 +108,8 @@ pub async fn get_json_body<T: Serialize>(client: Client, url: &str, body: T, met
     value
 }
 
-fn err_or_json(json: Value) -> Result<Value, QueryError> {
+// TODO! use serde for this or something idk
+fn err_or_json(json: Value) -> Result<Value, DiscordError> {
     if let Some(code) = json.get("code") {
         let code = code.as_i64().unwrap();
         let err = match DiscordErrorCode::from_i64(code)
@@ -120,13 +121,16 @@ fn err_or_json(json: Value) -> Result<Value, QueryError> {
                     retry_after: json.get("retry_after").unwrap().as_f64().unwrap() 
                 }
             },
-            DiscordErrorCode::Unknown => return None,
+            DiscordErrorCode::Unknown => DiscordError::Other {
+                message: json.get("message").unwrap_or(&Value::from("")).to_string(), 
+                code: json.get("code").unwrap().as_i64().unwrap_or(0) as u64
+            },
         };
 
-        return Some(err);
+        return Err(err);
     }
 
-    None
+    Ok(json)
 }
 
 pub async fn validate_response(res: Response) -> Result<Value, QueryError> {
@@ -139,9 +143,5 @@ pub async fn validate_response(res: Response) -> Result<Value, QueryError> {
         }
     };
 
-    if let Some(e) = err_from_message(&json) {
-        Err(QueryError::DiscordError { error: e })
-    } else {
-        Ok(json)
-    }
+    err_or_json(json).map_err(|e| QueryError::DiscordError { error: e })
 }

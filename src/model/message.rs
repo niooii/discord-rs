@@ -3,7 +3,7 @@ use num::FromPrimitive;
 use num_derive::FromPrimitive;
 use serde::{de::Error, Deserialize};
 use serde_json::Value;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use crate::model::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
 
 use super::Snowflake;
