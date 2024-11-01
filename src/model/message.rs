@@ -6,10 +6,12 @@ use serde_json::Value;
 use time::OffsetDateTime;
 use crate::model::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
 
+use super::Snowflake;
+
 #[derive(Deserialize, Debug)]
 pub struct Emoji {
     animated: bool,
-    id: String,
+    id: Snowflake,
     name: String
 }
 
@@ -59,7 +61,7 @@ enum MessageType {
 // TODO! fill these types
 #[derive(Deserialize, Debug)]
 pub struct MessageAttachment {
-    id: String,
+    id: Snowflake,
 }
 #[derive(Deserialize, Debug)]
 pub struct MessageComponent {
@@ -72,8 +74,8 @@ pub struct MessageEmbed {
 
 #[derive(Deserialize, Debug)]
 pub struct GeneralMessageData {
-    pub id: String,
-    pub channel_id: String,
+    pub id: Snowflake,
+    pub channel_id: Snowflake,
     #[serde(with = "time::serde::iso8601")]
     pub timestamp: OffsetDateTime,
     pub flags: u64,
@@ -105,7 +107,7 @@ pub struct UserJoinData {
     user: UserData,
     #[serde(rename = "member")]
     member_info: GuildMemberData,
-    guild_id: String,
+    guild_id: Snowflake,
 }
 
 #[derive(Deserialize, Debug)]
@@ -120,12 +122,12 @@ pub struct ReplyMessageData {
 pub struct ChatInputCommandData {
     #[serde(flatten)]
     pub general: GeneralMessageData,
-    pub application_id: String,
+    pub application_id: Snowflake,
     pub author: UserData,
     pub content: String,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub edited_timestamp: Option<OffsetDateTime>,
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     pub interaction: Data,
     pub interaction_metadata: Metadata,
     pub member: Option<GuildMemberData>,
@@ -137,7 +139,7 @@ pub struct ChatInputCommandData {
     pub position: u64,
     pub tts: bool,
     pub r#type: u64,
-    pub webhook_id: String,
+    pub webhook_id: Snowflake,
 }
 
 #[derive(Deserialize, Debug)]
@@ -165,7 +167,7 @@ impl<'de> serde::Deserialize<'de> for Message {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
         let mut clipboard = Clipboard::new().unwrap();
-        clipboard.set_text(serde_json::to_string_pretty(&value).unwrap());
+        clipboard.set_text(serde_json::to_string_pretty(&value).unwrap()).unwrap();
         let message_type = value.get("type").unwrap();
         let message_type = message_type.as_u64().unwrap();
         let message_type = FromPrimitive::from_u8(message_type as u8).unwrap();

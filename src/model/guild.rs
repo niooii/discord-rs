@@ -30,16 +30,16 @@ pub mod interaction {
     #[derive(Debug, Deserialize)]
     pub struct Metadata {
         // pub authorizing_integration_owners: HashMap<String, String>,
-        // pub id: String,
+        // pub id: Snowflake,
         // pub name: String,
         // pub r#type: u64,
         // pub user: UserData,
-        // pub user_id: String,
+        // pub user_id: Snowflake,
     }
 
     #[derive(Debug, Deserialize)]
     pub struct Data {
-        pub id: String,
+        pub id: Snowflake,
         pub member: GuildMemberData,
         pub name: String,
         pub r#type: u64,

@@ -5,9 +5,12 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use anyhow::Result;
 use serde_json::Value;
+use tokio::io::BufWriter;
 use super::dispatched_event::DispatchedEvent;
 use super::error::GatewayError;
 use serde::de::Error;
+use std::fs::File;
+use std::io::Write;
 
 #[derive(Serialize, PartialEq, Debug)]
 pub struct GatewaySendEventRaw
@@ -151,10 +154,11 @@ impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
                     }
                 );
             } else {
+                // Save the json that caused the fail on error
                 eprintln!("Error: {data:?}");
-                let mut clipboard = Clipboard::new().expect("Failed to create clipboard.");
-                clipboard.set_text(recieved_json).expect("Failed to copy recieved json to clipboard.");
-                eprintln!("Recieved json has been copied to your clipboard.");
+                let mut json_save_file = File::create("last_fail.json").expect("Failed to open file you're cooked");
+                json_save_file.write(recieved_json.as_bytes()).unwrap();
+                eprintln!("Recieved json has been saved...");
                 panic!();
             }
         }

@@ -1,10 +1,14 @@
-use reqwest::header::{self, HeaderName};
+use num::FromPrimitive;
+use num_derive::FromPrimitive;
+use reqwest::header;
 use reqwest::{header::HeaderMap, Client, ClientBuilder};
-use reqwest::{Response, StatusCode};
+use reqwest::Response;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
+
+use crate::api::DiscordError;
 
 pub fn build_request_client(auth: &String, ua: &String) -> Result<Client, reqwest::Error> {
     let mut headers = HeaderMap::new();
@@ -34,14 +38,19 @@ pub enum QueryError {
     #[error("Serde error: {err:?}")]
     SerdeError { err: serde_json::Error },
 
-    #[error("Unauthorized")]
-    Unauthorized { res: Response },
-
-    #[error("Ratelimit reached: try again after {retry_after} seconds")]
-    RateLimitReached { retry_after: f64 },
+    #[error("Discord error: {error}")]
+    DiscordError { error: DiscordError },
 
     #[error("Unhandled Error: {error}")]
     Other { error: String },
+}
+
+#[derive(FromPrimitive)]
+#[repr(i64)]
+pub enum DiscordErrorCode {
+    Unauthorized = 0,
+    WriteChannelRateLimitReached = 20028,
+    Unknown = -1
 }
 
 async fn res_to_type<T>(res: Response) -> Result<T, QueryError>
@@ -70,49 +79,69 @@ where
     }
 }
 
-async fn validate_auth(auth: &String) {}
-
-#[derive(Serialize)]
-pub struct Payload;
-
-pub async fn get_data<T>(client: Client, url: &str, payload: Option<Payload>, method: reqwest::Method) -> Result<T, QueryError>
+pub async fn get_struct<T>(client: Client, url: &str, method: reqwest::Method) -> Result<T, QueryError>
 where
     T: DeserializeOwned,
 {
-    let json = get_json(client, url, payload, method).await?;
+    let json = get_json(client, url, method).await?;
     json_to_type::<T>(json).await
 }
 
-pub async fn get_json(client: Client, url: &str, payload: Option<Payload>, method: reqwest::Method) -> Result<serde_json::Value, QueryError> {
-    let req = if let Some(p) = payload {
-        client.request(method, url).json(&p)
-    } else {
-        client.request(method, url)
-    };
+pub async fn get_struct_body<T: DeserializeOwned, S: Serialize>(client: Client, url: &str, body: S, method: reqwest::Method) -> Result<T, QueryError>
+{
+    let json = get_json_body(client, url, body, method).await?;
+    json_to_type::<T>(json).await
+}
 
-    let res = req.send().await
+pub async fn get_json(client: Client, url: &str, method: reqwest::Method) -> Result<serde_json::Value, QueryError> {
+    let res = client.request(method, url).send().await
         .map_err(|e| QueryError::ReqwestError { err: e })?;
-    let value = validate_ratelimit(res).await;
+
+    let value = validate_response(res).await;
     value
 }
 
-pub async fn validate_ratelimit(res: Response) -> Result<serde_json::Value, QueryError> {
+pub async fn get_json_body<T: Serialize>(client: Client, url: &str, body: T, method: reqwest::Method) -> Result<serde_json::Value, QueryError> {
+    let res = client.request(method, url).json(&body).send().await
+        .map_err(|e| QueryError::ReqwestError { err: e })?;
+    let value = validate_response(res).await;
+    value
+}
+
+fn err_or_json(json: Value) -> Result<Value, QueryError> {
+    if let Some(code) = json.get("code") {
+        let code = code.as_i64().unwrap();
+        let err = match DiscordErrorCode::from_i64(code)
+            .unwrap_or(DiscordErrorCode::Unknown) 
+        {
+            DiscordErrorCode::Unauthorized => DiscordError::AuthenticationFail,
+            DiscordErrorCode::WriteChannelRateLimitReached => {
+                DiscordError::RateLimitReached { 
+                    retry_after: json.get("retry_after").unwrap().as_f64().unwrap() 
+                }
+            },
+            DiscordErrorCode::Unknown => return None,
+        };
+
+        return Some(err);
+    }
+
+    None
+}
+
+pub async fn validate_response(res: Response) -> Result<Value, QueryError> {
     let response_text = res.text().await.unwrap();
-    // if response_text.is_empty() {
-    //     return 
-    // }
     let json = match serde_json::from_str::<Value>(&response_text) {
         Ok(v) => v,
         Err(e) => {
             eprintln!("failed to deserialize: {response_text}");
-            // TODO! check this out its not a reqwest error wtf
             return Err(QueryError::SerdeError { err: e });
         }
     };
 
-    if let Some(val) = json.get("retry_after") {
-        return Err(QueryError::RateLimitReached { retry_after: val.as_f64().unwrap() });
+    if let Some(e) = err_from_message(&json) {
+        Err(QueryError::DiscordError { error: e })
+    } else {
+        Ok(json)
     }
-
-    Ok(json)
 }

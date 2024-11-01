@@ -19,9 +19,9 @@ pub enum DispatchedEvent {
     /// Message was edited
     MessageUpdate {
         #[serde(rename = "id")]
-        message_id: String,
-        channel_id: String,
-        guild_id: String,
+        message_id: Snowflake,
+        channel_id: Snowflake,
+        guild_id: Snowflake,
         embeds: Option<Vec<MessageEmbed>>,
         components: Option<Vec<MessageComponent>>,
         attachments: Option<Vec<MessageAttachment>>,
@@ -259,7 +259,7 @@ pub enum DispatchedEvent {
     PresenceUpdate {
         // activities: Vec<Activity>,
         // broadcast: Option<bool>,
-        // guild_id: Option<String>,
+        // guild_id: Option<Snowflake>,
         // user: UserDataLimited,
         // status: String
     },
@@ -287,7 +287,7 @@ pub enum DispatchedEvent {
     VoiceStateUpdate {
         #[serde(flatten)]
         new_state: UserVoiceState,
-        guild_id: String,
+        guild_id: Snowflake,
         member: Option<GuildMemberData>
     },
     /// Guild's voice server was updated
@@ -301,10 +301,10 @@ pub enum DispatchedEvent {
     /// User voted on a poll
     MessagePollVoteAdd {
         answer_id: u16,
-        channel_id: String,
-        guild_id: String,
-        message_id: String,
-        user_id: String,
+        channel_id: Snowflake,
+        guild_id: Snowflake,
+        message_id: Snowflake,
+        user_id: Snowflake,
     },
     /// User removed a vote on a poll
     MessagePollVoteRemove {
@@ -317,8 +317,8 @@ pub enum DispatchedEvent {
     CallCreate {
         // TODO!
         // pub embedded_activities: [],
-        channel_id: String,
-        message_id: String,
+        channel_id: Snowflake,
+        message_id: Snowflake,
         region: String,
         #[serde(rename = "ringing")]
         ringing_user_ids: Vec<String>,
@@ -353,10 +353,10 @@ pub enum DispatchedEvent {
     },
     /// A message has been sent and acknowledged. (user only)
     MessageAck {
-        channel_id: String,
+        channel_id: Snowflake,
         flags: Option<u64>,
         last_viewed: Option<u64>,
-        message_id: String,
+        message_id: Snowflake,
         version: u64
     },
     UserSettingsProtoUpdate {

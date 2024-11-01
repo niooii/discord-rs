@@ -4,30 +4,34 @@ use num_derive::FromPrimitive;
 use serde::Deserialize;
 use serde_json::Value;
 use time::OffsetDateTime;
+use crate::http::QueryError;
 use crate::serde_utils;
 use crate::model;
+use serde::de::Error;
 use model::{permissions::PermissionOverwrite, user::*};
+
+use super::Snowflake;
 
 #[derive(Deserialize, Debug)]
 pub struct GuildForumTag {
-    id: String, 
+    id: Snowflake, 
     name: String,
     moderated: bool,
-    emoji_id: Option<String>,
+    emoji_id: Option<Snowflake>,
     emoji_name: Option<String>
 }
 
 #[derive(Deserialize, Debug)]
 pub struct GuildTextData {
-    pub id: String,
-    pub last_message_id: Option<String>,
+    pub id: Snowflake,
+    pub last_message_id: Option<Snowflake>,
     pub flags: u64,
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub last_pin_timestamp: Option<OffsetDateTime>,
     pub name: String,
     #[serde(rename = "parent_id")]
-    pub category_id: Option<String>,
+    pub category_id: Option<Snowflake>,
     pub rate_limit_per_user: u32,
     pub topic: Option<String>,
     pub position: u32,
@@ -37,8 +41,8 @@ pub struct GuildTextData {
 
 #[derive(Deserialize, Debug)]
 pub struct DmData {
-    pub id: String,
-    pub last_message_id: Option<String>,
+    pub id: Snowflake,
+    pub last_message_id: Option<Snowflake>,
     pub flags: u64,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub last_pin_timestamp: Option<OffsetDateTime>,
@@ -48,15 +52,15 @@ pub struct DmData {
 
 #[derive(Deserialize, Debug)]
 pub struct GuildVoiceData {
-    pub id: String,
-    pub last_message_id: Option<String>,
+    pub id: Snowflake,
+    pub last_message_id: Option<Snowflake>,
     pub flags: u64,
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     pub name: String,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub last_pin_timestamp: Option<OffsetDateTime>,
     #[serde(rename = "parent_id")]
-    pub category_id: Option<String>,
+    pub category_id: Option<Snowflake>,
     pub rate_limit_per_user: u32,
     pub bitrate: u32,
     pub user_limit: u32,
@@ -68,22 +72,22 @@ pub struct GuildVoiceData {
 
 #[derive(Deserialize, Debug)]
 pub struct GroupDmData {
-    pub id: String,
-    pub last_message_id: Option<String>,
+    pub id: Snowflake,
+    pub last_message_id: Option<Snowflake>,
     pub flags: u64,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub last_pin_timestamp: Option<OffsetDateTime>,
     pub recipients: Vec<UserData>,
     pub name: Option<String>,
     pub icon: Option<String>,
-    pub owner_id: Option<String>,
+    pub owner_id: Option<Snowflake>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct GuildCategoryData {
-    pub id: String,
+    pub id: Snowflake,
     pub flags: u64,
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     pub name: String,
     pub position: u32,
     pub permission_overwrites: Vec<PermissionOverwrite>,
@@ -91,15 +95,15 @@ pub struct GuildCategoryData {
 
 #[derive(Deserialize, Debug)]
 pub struct GuildAnnouncementData {
-    pub id: String,
-    pub last_message_id: String,
+    pub id: Snowflake,
+    pub last_message_id: Snowflake,
     pub flags: u64,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub last_pin_timestamp: Option<OffsetDateTime>,
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     pub name: String,
     #[serde(rename = "parent_id")]
-    pub category_id: Option<String>,
+    pub category_id: Option<Snowflake>,
     pub rate_limit_per_user: u32,
     pub topic: Option<String>,
     pub position: u32,
@@ -110,13 +114,13 @@ pub struct GuildAnnouncementData {
 
 #[derive(Deserialize, Debug)]
 pub struct GuildForumData {
-    pub id: String,
-    pub last_message_id: Option<String>,
+    pub id: Snowflake,
+    pub last_message_id: Option<Snowflake>,
     pub flags: u64,
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     pub name: String,
     #[serde(rename = "parent_id")]
-    pub category_id: String,
+    pub category_id: Snowflake,
     pub rate_limit_per_user: u32,
     pub topic: Option<String>,
     pub position: u32,
@@ -174,47 +178,36 @@ pub enum Channel {
     GuildMedia,
 }
 
+#[derive(Deserialize)]
+struct ChannelTypeHelper {
+    #[serde(rename = "type")]
+    channel_type: u8,
+}
+
 impl<'de> serde::Deserialize<'de> for Channel {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
-        let channel_type = value.get("type").unwrap();
-        let channel_type = channel_type.as_u64().unwrap();
-        let channel_type = FromPrimitive::from_u8(channel_type as u8).unwrap();
-        let mut clipboard = arboard::Clipboard::new().unwrap();
-        clipboard.set_text(serde_json::to_string_pretty(&value).unwrap()).unwrap();
-        let channel = match channel_type {
-            ChannelType::GuildText => {
-                let data = GuildTextData::deserialize(value);
-                Channel::GuildText(data.unwrap())
-            },
-            ChannelType::Dm => {
-                let data = DmData::deserialize(value);
-                Channel::Dm(data.unwrap())
-            },
-            ChannelType::GuildVoice => {
-                let data = GuildVoiceData::deserialize(value);
-                Channel::GuildVoice(data.unwrap())
-            },
-            ChannelType::GroupDm => {
-                let data = GroupDmData::deserialize(value);
-                Channel::GroupDm(data.unwrap())
-            },
-            ChannelType::GuildCategory => {
-                let data = GuildCategoryData::deserialize(value);
-                Channel::GuildCategory(data.unwrap())
-            },
-            ChannelType::GuildAnnouncement => {
-                let data = GuildAnnouncementData::deserialize(value);
-                Channel::GuildAnnouncement(data.unwrap())
-            },
-            ChannelType::AnnouncementThread => todo!(),
-            ChannelType::PublicThread => todo!(),
-            ChannelType::PrivateThread => todo!(),
-            ChannelType::GuildStageVoice => todo!(),
-            ChannelType::GuildDirectory => todo!(),
-            ChannelType::GuildForum => todo!(),
-            ChannelType::GuildMedia => todo!(),
-        };
-        Ok(channel)
+        let helper = ChannelTypeHelper::deserialize(&value).map_err(D::Error::custom)?;
+
+        let channel_type = ChannelType::from_u8(helper.channel_type)
+            .ok_or_else(|| Error::custom(format!("invalid or unimplemented channel type: {}", helper.channel_type)))?;
+
+        Ok(
+            match channel_type {
+                ChannelType::GuildText => Channel::GuildText(GuildTextData::deserialize(value).map_err(D::Error::custom)?),
+                ChannelType::Dm => Channel::Dm(DmData::deserialize(value).map_err(D::Error::custom)?),
+                ChannelType::GuildVoice => Channel::GuildVoice(GuildVoiceData::deserialize(value).map_err(D::Error::custom)?),
+                ChannelType::GroupDm => Channel::GroupDm(GroupDmData::deserialize(value).map_err(D::Error::custom)?),
+                ChannelType::GuildCategory => Channel::GuildCategory(GuildCategoryData::deserialize(value).map_err(D::Error::custom)?),
+                ChannelType::GuildAnnouncement => Channel::GuildAnnouncement(GuildAnnouncementData::deserialize(value).map_err(D::Error::custom)?),
+                ChannelType::GuildForum => Channel::GuildForum(GuildForumData::deserialize(value).map_err(D::Error::custom)?),
+                ChannelType::AnnouncementThread => Channel::AnnouncementThread,
+                ChannelType::PublicThread => Channel::PublicThread,
+                ChannelType::PrivateThread => Channel::PrivateThread,
+                ChannelType::GuildStageVoice => Channel::GuildStageVoice,
+                ChannelType::GuildDirectory => Channel::GuildDirectory,
+                ChannelType::GuildMedia => Channel::GuildMedia,
+            }
+        )
     }
 }

@@ -2,26 +2,12 @@
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use crate::model::*;
 use err_derive::Error;
 use rand::prelude::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use reqwest::Client;
 use crate::http;
-use crate::http::validate_ratelimit;
-use http::QueryError;
-use serde::Serialize;
-use channel::*;
-use crate::endpoints;
-
-use num_derive::FromPrimitive;    
-use num_traits::FromPrimitive;
-
-
-// DISCORD STRUCTS
-
-// OTHER STUFF
 
 #[derive(Debug, Error)]
 pub enum DiscordBuildError {
@@ -56,7 +42,7 @@ pub struct DiscordClientBuilder {
 impl DiscordClientBuilder {
     /// A builder for the discord client.
     /// The authentication token is required.
-    pub fn builder(auth: &str) -> DiscordClientBuilder {
+    pub fn new(auth: &str) -> DiscordClientBuilder {
         DiscordClientBuilder {
             auth: auth.to_string(),
             ..Default::default()
@@ -75,14 +61,14 @@ impl DiscordClientBuilder {
     }
 
     /// Set's the user agent to the specificed string.
-    pub fn set_user_agent(&mut self, user_agent: &str) -> &mut DiscordClientBuilder {
+    pub fn set_user_agent(mut self, user_agent: &str) -> DiscordClientBuilder {
         self.user_agent = user_agent.to_string();
         self
     }
 
     /// Set's the user agent for the client to a random agent.
     /// Selected from a list of 1000 agents.
-    pub fn set_random_agent(&mut self, seed: u64) -> &mut DiscordClientBuilder {
+    pub fn set_random_agent(mut self, seed: u64) -> DiscordClientBuilder {
         let mut rng = ChaCha20Rng::seed_from_u64(seed);
         let t = rng.gen_range(0..1000);
 
@@ -99,10 +85,6 @@ impl DiscordClientBuilder {
 
         self
     }
-
-    /// Disables all safetey mechanisms.
-    pub fn i_am_really_stupid(&mut self) -> &mut DiscordClientBuilder {
-        self
-    }
 }
+
 

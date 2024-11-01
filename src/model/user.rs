@@ -1,11 +1,11 @@
-use num::FromPrimitive;
 use num_derive::FromPrimitive;
-use serde::{Deserialize, Deserializer};
-use serde_json::Value;
+use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 use time::OffsetDateTime;
-use serde::{de::Error};
-use crate::{impl_deserialize_uint_tags, model::message::Emoji};
+use serde::de::Error;
+use crate::impl_deserialize_uint_tags;
+
+use super::Snowflake;
 
 #[derive(Deserialize_repr, Debug)]
 #[repr(u8)]
@@ -18,7 +18,7 @@ pub enum NitroType {
 
 #[derive(Debug, Deserialize)]
 pub struct MainUserData {
-    pub id: String,
+    pub id: Snowflake,
     pub username: String,
     pub avatar: Option<String>,
     pub discriminator: String,
@@ -44,11 +44,11 @@ pub struct MainUserData {
 /// User data that is sent from the Gateway connection, which contains slightly different data.
 #[derive(Debug, Deserialize)]
 pub struct GatewayUserData {
-    pub id: String,
+    pub id: Snowflake,
     pub username: String,
     pub avatar: Option<String>,
     pub discriminator: String,
-    pub public_flags: u64,
+    // pub public_flags: u64,
     pub premium_type: NitroType,
     pub flags: u64,
     pub banner: Option<String>,
@@ -66,7 +66,7 @@ pub struct GatewayUserData {
 
 #[derive(Deserialize, Debug)]
 pub struct UserData {
-    pub id: String,
+    pub id: Snowflake,
     pub username: String,
     // This is the avatar hash. 
     pub avatar: Option<String>,
@@ -77,7 +77,7 @@ pub struct UserData {
 /// Used in responses where the api returns a partial user payload, which always should contain the id.
 #[derive(Deserialize, Debug)]
 pub struct UserDataLimited {
-    pub id: String,
+    pub id: Snowflake,
     pub username: Option<String>,
     // This is the avatar hash. 
     pub avatar: Option<String>,
@@ -146,7 +146,7 @@ impl_deserialize_uint_tags!(
 #[derive(Deserialize, Debug)]
 pub struct FriendRemoved {
     #[serde(rename = "id")]
-    other_user_id: String,
+    other_user_id: Snowflake,
     nickname: Option<String>,
     #[serde(rename = "since", with = "time::serde::iso8601")]
     friends_since: OffsetDateTime
@@ -155,7 +155,7 @@ pub struct FriendRemoved {
 #[derive(Deserialize, Debug)]
 pub struct IncomingRequestDeclinedOrCanceled {
     #[serde(rename = "id")]
-    other_user_id: String,
+    other_user_id: Snowflake,
     nickname: Option<String>,
     #[serde(rename = "since", with = "time::serde::iso8601")]
     friend_request_sent_date: OffsetDateTime
@@ -164,7 +164,7 @@ pub struct IncomingRequestDeclinedOrCanceled {
 #[derive(Deserialize, Debug)]
 pub struct OutgoingRequestCanceled {
     #[serde(rename = "id")]
-    other_user_id: String,
+    other_user_id: Snowflake,
     nickname: Option<String>,
 }
 
@@ -204,6 +204,8 @@ pub mod activity {
     use serde_repr::Deserialize_repr;
     use time::OffsetDateTime;
 
+    use crate::model::Snowflake;
+
     #[derive(Deserialize, Debug)]
     pub struct Assets {
         pub large_image: String,
@@ -236,7 +238,7 @@ pub mod activity {
     #[derive(Deserialize, Debug)]
     pub struct Activity {
         pub r#type: Type,
-        pub application_id: Option<String>,
+        pub application_id: Option<Snowflake>,
         // pub emoji: Option<Emoji>,
         pub name: Option<String>,
         #[serde(rename = "state")]
@@ -247,8 +249,8 @@ pub mod activity {
         pub created_at: OffsetDateTime,
         pub timestamps: Option<Timestamps>,
         pub buttons: Option<Vec<String>>,
-        pub id: Option<String>,
-        pub session_id: Option<String>,
+        pub id: Option<Snowflake>,
+        pub session_id: Option<Snowflake>,
         pub url: Option<String>
     }
 }

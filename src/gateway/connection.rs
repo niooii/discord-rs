@@ -1,35 +1,17 @@
 #![allow(dead_code)]
 
 use tokio::task::JoinHandle;
-use num_derive::FromPrimitive;
 use serde::Deserialize;
-use serde_json::error::Category;
 use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message;
-use zstd::stream::read::Decoder;
-use zstd::zstd_safe::WriteBuf;
 use tokio::time::sleep;
-use crate::http;
-use crate::http::validate_ratelimit;
-use http::QueryError;
 use serde::Serialize;
-use crate::model;
-use model::user::*;
-use model::channel;
-use channel::*;
-use crate::endpoints;
-use crate::client::DiscordClient;
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
-use num_traits::FromPrimitive;
-use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::io::Cursor;
-use std::io::Read;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
-use serde_eetf::{to_bytes, from_bytes};
 use anyhow::Result;
 
 use super::dispatched_event::DispatchedEvent;
@@ -40,18 +22,18 @@ use super::events::*;
 struct Properties {
     os: String,
     browser: String,
-    release_channel: String,
-    client_version: String,
-    os_version: String,
+    // release_channel: String,
+    // client_version: String,
+    // os_version: String,
     os_arch: String,
     app_arch: String,
     system_locale: String,
     browser_user_agent: String,
-    browser_version: String,
-    client_build_number: u32,
-    native_build_number: u32,
-    client_event_source: Option<String>,
-    design_id: u32,
+    // browser_version: String,
+    // client_build_number: u32,
+    // native_build_number: u32,
+    // client_event_source: Option<String>,
+    // design_id: u32,
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
@@ -88,18 +70,18 @@ impl GatewayConnection {
         let properties = Properties {
             os: "Windows".to_string(),
             browser: "Discord Client".to_string(),
-            release_channel: "stable".to_string(),
-            client_version: "1.0.9151".to_string(),
-            os_version: "10.0.19045".to_string(),
+            // release_channel: "stable".to_string(),
+            // client_version: "1.0.9151".to_string(),
+            // os_version: "10.0.19045".to_string(),
             os_arch: "x64".to_string(),
             app_arch: "x64".to_string(),
             system_locale: "en-US".to_string(),
             browser_user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9151 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36".to_string(),
-            browser_version: "28.2.10".to_string(),
-            client_build_number: 304683,
-            native_build_number: 48891,
-            client_event_source: None,
-            design_id: 0,
+            // browser_version: "28.2.10".to_string(),
+            // client_build_number: 304683,
+            // native_build_number: 48891,
+            // client_event_source: None,
+            // design_id: 0,
         };
 
         let presence = Presence {

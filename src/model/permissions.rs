@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
+use super::Snowflake;
+
 
 // https://discord.com/developers/docs/topics/permissions
 pub mod permission_bit_flag {
@@ -75,7 +77,7 @@ pub enum PermissionOverwriteType {
 
 #[derive(Deserialize, Debug)]
 pub struct PermissionOverwrite {
-    id: String,
+    id: Snowflake,
     #[serde(rename = "type")]
     r#type: PermissionOverwriteType,
     allow: String,

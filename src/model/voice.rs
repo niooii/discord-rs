@@ -1,8 +1,7 @@
 use serde::Deserialize;
 use time::OffsetDateTime;
 
-use crate::model;
-use model::guild::GuildMemberData;
+use super::Snowflake;
 
 #[derive(Deserialize, Debug)]
 pub struct PrivateCallData {
@@ -14,7 +13,7 @@ pub struct PrivateCallData {
 
 #[derive(Deserialize, Debug)]
 pub struct UserVoiceState {
-    channel_id: Option<String>,
+    channel_id: Option<Snowflake>,
     deaf: bool,
     mute: bool,
     #[serde(with = "time::serde::iso8601::option")]
@@ -22,7 +21,7 @@ pub struct UserVoiceState {
     self_deaf: bool,
     self_mute: bool,
     self_video: bool,
-    session_id: String,
+    session_id: Snowflake,
     suppress: bool,
-    user_id: String,
+    user_id: Snowflake,
 }

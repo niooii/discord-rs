@@ -11,7 +11,7 @@ pub fn deserialize<'a, D: Deserializer<'a>>(deserializer: D) -> Result<OffsetDat
 
 pub mod option {
     use time::OffsetDateTime;
-use serde::{de, Deserializer, Deserialize};
+    use serde::{de, Deserializer, Deserialize};
     /// Deserialize an `Option<OffsetDateTime>` from its Unix timestamp with milliseconds
     pub fn deserialize<'a, D: Deserializer<'a>>(
         deserializer: D,
