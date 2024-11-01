@@ -98,28 +98,26 @@ pub async fn send_message(
     content: &String
 ) -> Result<DefaultMessageData> {
     let post_data = MessagePostData::new(content);
-    http::get_struct_body(client, &endpoints::send_message(channel_id), post_data, Method::POST).await
+    http::get_struct_body(
+        client, 
+        &endpoints::send_message(channel_id), 
+        post_data, 
+        Method::POST
+    ).await
 }
 
 // getting content
-pub async fn messages_before(
+pub async fn messages(
     client: Client,
     channel_id: &Snowflake,
-    before_message_id: &Snowflake,
+    before_message_id: Option<&Snowflake>,
     limit: u8
 ) -> Result<Vec<Message>> {
-    let res = client.get(endpoints::messages_before(&channel_id, &before_message_id, limit))
-        .send().await;
-
-    if let Err(e) = res {
-        Err(QueryError::ReqwestError { err: e })
-    }
-    else {
-        let res = res.unwrap();
-        let messages = res.json::<Vec<Message>>().await
-            .map_err(|e| QueryError::ReqwestError { err: e })?;
-        Ok(messages)
-    }
+    http::get_struct(
+        client, 
+        &endpoints::messages(channel_id, before_message_id, limit), 
+        Method::GET
+    ).await
 }
 
 pub async fn message_from_id(

@@ -23,8 +23,11 @@ pub fn user(user_id: &Snowflake) -> String {
     format!("https://discord.com/api/v9/users/{}", user_id)
 }
 
-pub fn messages_before(channel_id: &Snowflake, before_message_id: &Snowflake, limit: u8) -> String {
-    format!("https://discord.com/api/v9/channels/{channel_id}/messages?before={before_message_id}&limit={limit}")
+pub fn messages(channel_id: &Snowflake, before_message_id: Option<&Snowflake>, limit: u8) -> String {
+    match before_message_id {
+        Some(before_msg_id) => format!("https://discord.com/api/v9/channels/{channel_id}/messages?before={before_msg_id}&limit={limit}"),
+        None => format!("https://discord.com/api/v9/channels/{channel_id}/messages?&limit={limit}")
+    }
 }
 
 pub fn message(channel_id: &Snowflake, message_id: &Snowflake) -> String {

@@ -36,7 +36,7 @@ pub enum MessageFetchRate {
     // 100 per request, max that discord allows.
     Max,
     // Must be above 0 and under 100.
-    Custom
+    Custom { per_request: u8 }
 }
 
 impl DiscordClient {
@@ -52,12 +52,26 @@ impl DiscordClient {
         api::get_private_channels(self.req_client()).await
     }
 
-    pub async fn messages(&self, channel_id: &Snowflake, fetch_rate: MessageFetchRate) 
-        -> impl Stream<Item = Result<Vec<Message>>> {
+    pub async fn messages<'a>(
+        &'a self, 
+        channel_id: &'a Snowflake, 
+        fetch_rate: MessageFetchRate
+    ) -> impl Stream<Item = Result<Vec<Message>>> + 'a {
         try_stream! {
-            
+            let limit: u8 = match fetch_rate {
+                MessageFetchRate::Default => 50,
+                MessageFetchRate::Max => 100,
+                MessageFetchRate::Custom { per_request } => per_request,
+            };
+            let mut curr_oldest_id: Option<Snowflake> = None;
             loop {
-                yield Vec::new();
+                let msgs = api::messages(
+                    self.req_client(), 
+                    channel_id, 
+                    curr_oldest_id.as_ref(), 
+                    limit
+                ).await?;
+                yield msgs;
             }
         }
     }

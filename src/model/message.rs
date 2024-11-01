@@ -6,7 +6,7 @@ use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 use crate::model::{guild::{GuildMemberData, interaction::*}, user::UserData, voice::PrivateCallData};
 
-use super::Snowflake;
+use super::{Snowflake, ID};
 
 #[derive(Deserialize, Debug)]
 pub struct Emoji {
@@ -159,18 +159,24 @@ pub enum Message {
     Reply(ReplyMessageData),
     ChatInputCommand(ChatInputCommandData),
 
-    Unknown
+    Unknown(GeneralMessageData)
 }
 
-// TODO!
+#[derive(Deserialize)]
+struct MessageTypeHelper {
+    #[serde(rename = "type")]
+    msg_type: u8
+}
+
+// TODO! FIX ATROCIOUSNESS
 impl<'de> serde::Deserialize<'de> for Message {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
-        let mut clipboard = Clipboard::new().unwrap();
-        clipboard.set_text(serde_json::to_string_pretty(&value).unwrap()).unwrap();
-        let message_type = value.get("type").unwrap();
-        let message_type = message_type.as_u64().unwrap();
-        let message_type = FromPrimitive::from_u8(message_type as u8).unwrap();
+        let helper = MessageTypeHelper::deserialize(&value).map_err(D::Error::custom)?;
+        
+        let message_type = MessageType::from_u8(helper.msg_type)
+            .ok_or_else(|| Error::custom(format!("invalid or unimplemented message type: {}", helper.msg_type)))?;
+        
         let message = match message_type {
             MessageType::Default => {
                 let default_msg_data = DefaultMessageData::deserialize(value).map_err(D::Error::custom)?;
@@ -223,8 +229,24 @@ impl<'de> serde::Deserialize<'de> for Message {
             // MessageType::GuildIncidentReportRaid => todo!(),
             // MessageType::GuildIncidentReportFalseAlarm => todo!(),
             // MessageType::PurchaseNotification => todo!(),
-            _ => Message::Unknown
+            _ => {
+                let general_msg_data = GeneralMessageData::deserialize(value).map_err(D::Error::custom)?;
+                Message::Unknown(general_msg_data)
+            },
         };
         Ok(message)
+    }
+}
+
+impl ID for Message {
+    fn id(&self) -> &Snowflake {
+        match self {
+            Message::Default(default_message_data) => todo!(),
+            Message::Call(call_message_data) => todo!(),
+            Message::UserJoin(user_join_data) => todo!(),
+            Message::Reply(reply_message_data) => todo!(),
+            Message::ChatInputCommand(chat_input_command_data) => todo!(),
+            Message::Unknown(general_message_data) => todo!(),
+        }
     }
 }

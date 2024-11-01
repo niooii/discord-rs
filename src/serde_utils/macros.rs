@@ -21,3 +21,16 @@ macro_rules! impl_deserialize_uint_tags {
         }
     }
 }   
+
+#[macro_export]
+macro_rules! mapped_deserialize {
+    ($($variant:ident => $channel_type:ident($data_type:ident)),* $(,)?) => {
+        match channel_type {
+            $(
+                $variant => $channel_type(
+                    $data_type::deserialize(value).map_err(D::Error::custom)?
+                ),
+            )*
+        }
+    }
+}

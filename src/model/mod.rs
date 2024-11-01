@@ -7,6 +7,11 @@ pub mod voice;
 
 use std::fmt::{Debug, Display};
 
+/// Will be implemented for all discord objects that have a snowflake id.
+pub trait ID {
+    fn id(&self) -> &Snowflake;
+}
+
 use serde::{Serialize, Deserialize};
 
 // Maybe add more someday
