@@ -25,8 +25,6 @@ struct Properties {
     // release_channel: String,
     // client_version: String,
     // os_version: String,
-    os_arch: String,
-    app_arch: String,
     system_locale: String,
     browser_user_agent: String,
     // browser_version: String,
@@ -60,6 +58,7 @@ pub struct GatewayConnection {
 }
 
 impl GatewayConnection { 
+    // TODO! a rewrite is in order...
     pub async fn new(token: &str) -> Result<GatewayConnection> {
         // TODO! "wss://gateway.discord.gg/?encoding=etf&v=9&compress=zstd-stream"
         let ws = "wss://gateway.discord.gg/?encoding=json&v=9";
@@ -69,12 +68,10 @@ impl GatewayConnection {
         
         let properties = Properties {
             os: "Windows".to_string(),
-            browser: "Discord Client".to_string(),
+            browser: "Firefox".to_string(),
             // release_channel: "stable".to_string(),
             // client_version: "1.0.9151".to_string(),
             // os_version: "10.0.19045".to_string(),
-            os_arch: "x64".to_string(),
-            app_arch: "x64".to_string(),
             system_locale: "en-US".to_string(),
             browser_user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9151 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36".to_string(),
             // browser_version: "28.2.10".to_string(),
@@ -220,6 +217,13 @@ impl GatewayConnection {
         Ok(connection)
     }
 
+    // TODO! async stream api
+    /*
+    GatewayConnection should implement Stream.
+    Implement deserialize for GatewayRecieveEvent so i can just
+    call GatewayRecieveEvent::Deserialize on stream objects
+    Stream Item will be Result<DispatchedEvent>
+    */
     pub fn poll_events(&mut self) -> Option<DispatchedEvent> {
         let mut event_q = self.event_q.lock().unwrap();
         event_q.pop_front()

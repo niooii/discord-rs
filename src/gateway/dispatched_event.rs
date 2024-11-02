@@ -14,7 +14,7 @@ pub enum DispatchedEvent {
     /// Message was created
     MessageCreate {
         #[serde(flatten)]
-        message_data: Message
+        message: Message
     },
     /// Message was edited
     MessageUpdate {

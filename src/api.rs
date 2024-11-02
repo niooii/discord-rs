@@ -2,6 +2,7 @@ use reqwest::{Client, Method};
 use serde::Serialize;
 use thiserror::Error;
 use crate::model::channel::Channel;
+use crate::model::guild::Guild;
 use crate::model::message::DefaultMessageData;
 use crate::model::message::Message;
 use crate::model::user::MainUserData;
@@ -17,7 +18,7 @@ pub enum DiscordError {
     RateLimitReached { retry_after: f64 },
     #[error("Authentication failed")]
     AuthenticationFail,
-    #[error("")]
+    #[error("Error {code}: {message}")]
     Other {
         message: String,
         code: u64
@@ -45,20 +46,27 @@ pub(crate) async fn get_user_from_id(
     ).await
 }
 
-// TEXTCHANNEL STUFF
-pub(crate) async fn get_channels_in_guild(
-    client: Client,
-    guild_id: &Snowflake,
-) -> Result<Vec<Channel>> {
-    http::get_struct::<Vec<Channel>>(client, &endpoints::guild_channels(guild_id), Method::GET).await
-}
-
 pub(crate) async fn get_private_channels(
     client: Client
 ) -> Result<Vec<Channel>> {
     Ok(
         http::get_struct::<Vec<Channel>>(client, &endpoints::PRIVATE_CHANNELS, Method::GET).await?
     )
+}
+
+pub(crate) async fn get_guilds(
+    client: Client
+) -> Result<Vec<Guild>> {
+    Ok(
+        http::get_struct::<Vec<Guild>>(client, &endpoints::GUILDS, Method::GET).await?
+    )
+}
+
+pub(crate) async fn get_channels_in_guild(
+    client: Client,
+    guild_id: &Snowflake,
+) -> Result<Vec<Channel>> {
+    http::get_struct::<Vec<Channel>>(client, &endpoints::guild_channels(guild_id), Method::GET).await
 }
 
 // messaging utilities
@@ -79,17 +87,8 @@ pub async fn start_typing(
     client: Client,
     channel_id: &Snowflake
 ) -> Result<()> {
-    let res = client.post(endpoints::start_typing(&channel_id))
-        .send().await;
-
-    // handle errors better MONKEY
-    if let Err(e) = res {
-        return  Err(QueryError::ReqwestError { err: e });
-    }
-    
-    // http::validate_ratelimit(res.unwrap()).await?;
-
-    Ok(())
+    http::send(client, &endpoints::start_typing(&channel_id), Method::POST)
+        .await
 }
 
 pub async fn send_message(
@@ -101,12 +100,11 @@ pub async fn send_message(
     http::get_struct_body(
         client, 
         &endpoints::send_message(channel_id), 
-        post_data, 
+        &post_data, 
         Method::POST
     ).await
 }
 
-// getting content
 pub async fn messages(
     client: Client,
     channel_id: &Snowflake,

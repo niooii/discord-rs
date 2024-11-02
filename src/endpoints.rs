@@ -2,6 +2,7 @@ use crate::model::Snowflake;
 
 pub const ME: &str = "https://discord.com/api/v9/users/@me";
 pub const PRIVATE_CHANNELS: &str = "https://discord.com/api/v9/users/@me/channels";
+pub const GUILDS: &str = "https://discord.com/api/v9/users/@me/guilds";
 
 pub fn channel(channel_id: &Snowflake) -> String {
     format!("https://discord.com/api/v9/channels/{}", channel_id)

@@ -30,3 +30,4 @@ tokio-tungstenite = { version = "0.23.1", features = ["native-tls"] }
 zstd = "0.13.1"
 arboard = "3.4.0"
 async-stream = "0.3.6"
+pin-project-lite = "0.2.15"

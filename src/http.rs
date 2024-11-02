@@ -1,3 +1,4 @@
+use arboard::Clipboard;
 use num::FromPrimitive;
 use num_derive::FromPrimitive;
 use reqwest::header;
@@ -7,6 +8,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
+use tokio_tungstenite::tungstenite::http::response;
 
 use crate::api::DiscordError;
 
@@ -87,7 +89,7 @@ where
     json_to_type::<T>(json).await
 }
 
-pub async fn get_struct_body<T: DeserializeOwned, S: Serialize>(client: Client, url: &str, body: S, method: reqwest::Method) -> Result<T, QueryError>
+pub async fn get_struct_body<T: DeserializeOwned, S: Serialize>(client: Client, url: &str, body: &S, method: reqwest::Method) -> Result<T, QueryError>
 {
     let json = get_json_body(client, url, body, method).await?;
     json_to_type::<T>(json).await
@@ -96,16 +98,25 @@ pub async fn get_struct_body<T: DeserializeOwned, S: Serialize>(client: Client, 
 pub async fn get_json(client: Client, url: &str, method: reqwest::Method) -> Result<serde_json::Value, QueryError> {
     let res = client.request(method, url).send().await
         .map_err(|e| QueryError::ReqwestError { err: e })?;
-
-    let value = validate_response(res).await;
-    value
+    validate_response(res).await
 }
 
-pub async fn get_json_body<T: Serialize>(client: Client, url: &str, body: T, method: reqwest::Method) -> Result<serde_json::Value, QueryError> {
-    let res = client.request(method, url).json(&body).send().await
+pub async fn get_json_body<T: Serialize>(client: Client, url: &str, body: &T, method: reqwest::Method) -> Result<serde_json::Value, QueryError> {
+    let res = client.request(method, url).json(body).send().await
         .map_err(|e| QueryError::ReqwestError { err: e })?;
-    let value = validate_response(res).await;
-    value
+    validate_response(res).await
+}
+
+pub async fn send(client: Client, url: &str, method: reqwest::Method) -> Result<(), QueryError> {
+    let res = client.request(method, url).send().await
+        .map_err(|e| QueryError::ReqwestError { err: e })?;
+    validate_response(res).await.map(|_| ())
+}
+
+pub async fn send_body<T: Serialize>(client: Client, url: &str, body: &T, method: reqwest::Method) -> Result<(), QueryError> {
+    let res = client.request(method, url).json(body).send().await
+        .map_err(|e| QueryError::ReqwestError { err: e })?;
+    validate_response(res).await.map(|_| ())
 }
 
 // TODO! use serde for this or something idk
@@ -134,11 +145,14 @@ fn err_or_json(json: Value) -> Result<Value, DiscordError> {
 }
 
 pub async fn validate_response(res: Response) -> Result<Value, QueryError> {
-    let response_text = res.text().await.unwrap();
+    let mut response_text: String = res.text().await.unwrap();
+    if response_text.is_empty() {
+        response_text = "{}".to_string();
+    }
+    
     let json = match serde_json::from_str::<Value>(&response_text) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("failed to deserialize: {response_text}");
             return Err(QueryError::SerdeError { err: e });
         }
     };

@@ -15,7 +15,7 @@ pub trait ID {
 use serde::{Serialize, Deserialize};
 
 // Maybe add more someday
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(transparent)]
 pub struct Snowflake {
     pub(crate) snowflake_str: String

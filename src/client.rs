@@ -2,34 +2,41 @@
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use err_derive::Error;
+use thiserror::Error;
 use rand::prelude::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use reqwest::Client;
-use crate::http;
+use crate::http::QueryError;
+use crate::model::Snowflake;
+use crate::{api, http};
+use crate::model::user::MainUserData;
 
-#[derive(Debug, Error)]
+#[derive(Error, Debug)]
 pub enum DiscordBuildError {
-    #[error(display = "{}", auth)]
-    AuthNotValid { auth: String },
+    #[error("QueryError: {err}")]
+    QueryError { err: QueryError },
 
-    #[error(display = "InternetUnavailable")]
+    #[error("InternetUnavailable")]
     InternetUnavailable,
 
-    #[error(display = "ReqwestError: {}", err)]
+    #[error("ReqwestError: {err}")]
     ReqwestError { err: reqwest::Error },
 }
 
 #[derive(Debug)]
 pub struct DiscordClient {
-    // auth: String,
+    me: MainUserData,
     req_client: reqwest::Client,
 }
 
 impl DiscordClient {
     pub fn req_client(&self) -> Client {
         self.req_client.clone()
+    }
+
+    pub fn user_id(&self) -> &Snowflake {
+        &self.me.id
     }
 }
 
@@ -50,14 +57,16 @@ impl DiscordClientBuilder {
     }
 
     /// Builds client for use.
-    pub fn build(self) -> Result<DiscordClient, DiscordBuildError> {
-        let client = DiscordClient {
-            req_client: http::build_request_client(&self.auth, &self.user_agent)
-                .map_err(|e| DiscordBuildError::ReqwestError { err: e })?,
-            // auth: self.auth,
-        };
+    pub async fn build(self) -> Result<DiscordClient, DiscordBuildError> {
+        let req_client = http::build_request_client(&self.auth, &self.user_agent)
+        .map_err(|e| DiscordBuildError::ReqwestError { err: e })?;
 
-        Ok(client)
+        Ok(
+            DiscordClient {
+                me: api::get_authenticated_user_data(req_client.clone()).await.map_err(|e| DiscordBuildError::QueryError { err: e })?,
+                req_client,
+            }
+        )
     }
 
     /// Set's the user agent to the specificed string.

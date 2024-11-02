@@ -20,6 +20,22 @@ pub struct GuildMemberData {
     pub user: Option<UserData>
 }
 
+#[derive(Deserialize, Debug)]
+pub struct ExtraGuildData {
+    
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Guild {
+    id: Snowflake,
+    name: String,
+    icon: Option<String>,
+    banner: Option<String>,
+    #[serde(rename = "owner")]
+    is_owner: bool,
+    extra_data: Option<ExtraGuildData>
+}
+
 pub mod interaction {
     use crate::model::*;
     use user::UserData;

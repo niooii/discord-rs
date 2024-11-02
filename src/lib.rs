@@ -2,18 +2,20 @@
 pub mod client;
 pub mod endpoints;
 pub mod http;
-pub mod api;
+pub(crate) mod api;
 pub mod gateway;
 pub mod model;
 #[macro_use]
 pub mod serde_utils;
-use std::ops::{Sub, SubAssign};
+use std::{ops::{Sub, SubAssign}, pin::Pin, task::{Context, Poll}};
 use futures_util::Stream;
-use model::{channel::Channel, message::{DefaultMessageData, Message}, user::{MainUserData, UserData}, Snowflake};
+use model::{channel::Channel, guild::Guild, message::{DefaultMessageData, GeneralMessageData, Message}, user::{MainUserData, UserData}, Snowflake};
+use pin_project_lite::pin_project;
 use tokio::time::Duration;
 use crate::client::DiscordClient;
 use api::Result;
 use async_stream::{stream, try_stream};
+use model::ID;
 
 pub enum MessageSendTime {
     /// The message will send without delay.
@@ -39,6 +41,22 @@ pub enum MessageFetchRate {
     Custom { per_request: u8 }
 }
 
+pin_project! {
+    pub struct MessageStream<'a> {
+        #[pin]
+        inner: Pin<Box<dyn Stream<Item = Result<Vec<Message>>> + 'a>>
+    }
+}
+
+impl<'a> Stream for MessageStream<'a> {
+    type Item = Result<Vec<Message>>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.project().inner.poll_next(cx)
+    }
+}
+
+
 impl DiscordClient {
     pub async fn me(&self) -> Result<MainUserData> {
         api::get_authenticated_user_data(self.req_client()).await
@@ -52,12 +70,16 @@ impl DiscordClient {
         api::get_private_channels(self.req_client()).await
     }
 
-    pub async fn messages<'a>(
+    pub async fn guilds(&self) -> Result<Vec<Guild>> {
+        api::get_guilds(self.req_client()).await
+    }
+
+    pub fn messages<'a>(
         &'a self, 
         channel_id: &'a Snowflake, 
         fetch_rate: MessageFetchRate
     ) -> impl Stream<Item = Result<Vec<Message>>> + 'a {
-        try_stream! {
+        let stream = try_stream! {
             let limit: u8 = match fetch_rate {
                 MessageFetchRate::Default => 50,
                 MessageFetchRate::Max => 100,
@@ -66,13 +88,24 @@ impl DiscordClient {
             let mut curr_oldest_id: Option<Snowflake> = None;
             loop {
                 let msgs = api::messages(
-                    self.req_client(), 
-                    channel_id, 
-                    curr_oldest_id.as_ref(), 
+                    self.req_client(),
+                    channel_id,
+                    curr_oldest_id.as_ref(),
                     limit
                 ).await?;
+                curr_oldest_id = Some(
+                    if let Some(msg) = msgs.last() {
+                        msg.id().clone()
+                    } else {
+                        break;
+                    }
+                );
                 yield msgs;
             }
+        };
+
+        MessageStream {
+            inner: Box::pin(stream)
         }
     }
 
@@ -99,5 +132,12 @@ impl DiscordClient {
         }
 
         api::send_message(self.req_client(), channel_id, content).await
+    }
+}
+
+// Convenience methods
+impl DefaultMessageData {
+    pub fn is_author(&self, user_id: &Snowflake) -> bool {
+        user_id == &self.author.id
     }
 }

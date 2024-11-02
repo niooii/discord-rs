@@ -241,12 +241,12 @@ impl<'de> serde::Deserialize<'de> for Message {
 impl ID for Message {
     fn id(&self) -> &Snowflake {
         match self {
-            Message::Default(default_message_data) => todo!(),
-            Message::Call(call_message_data) => todo!(),
-            Message::UserJoin(user_join_data) => todo!(),
-            Message::Reply(reply_message_data) => todo!(),
-            Message::ChatInputCommand(chat_input_command_data) => todo!(),
-            Message::Unknown(general_message_data) => todo!(),
+            Message::Default(default_message_data) => &default_message_data.general.id,
+            Message::Call(call_message_data) => &call_message_data.general.id,
+            Message::UserJoin(user_join_data) => &user_join_data.general.id,
+            Message::Reply(reply_message_data) => &reply_message_data.message.general.id,
+            Message::ChatInputCommand(chat_input_command_data) => &chat_input_command_data.general.id,
+            Message::Unknown(general_message_data) =>&general_message_data.id,
         }
     }
 }
