@@ -1,5 +1,7 @@
 use reqwest::{Client, Method};
+use serde::Deserialize;
 use serde::Serialize;
+use serde_json::json;
 use thiserror::Error;
 use crate::model::channel::Channel;
 use crate::model::guild::Guild;
@@ -123,18 +125,31 @@ pub async fn message_from_id(
     channel_id: &Snowflake,
     message_id: &Snowflake
 ) -> Result<Message> {
-    let res = client.get(endpoints::message(&channel_id, message_id))
-        .send().await;
-
-    if let Err(e) = res {
-        Err(QueryError::ReqwestError { err: e })
-    }
-    else {
-        let res = res.unwrap();
-        let message = res.json::<Message>().await
-            .map_err(|e| QueryError::ReqwestError { err: e })?;
-        Ok(message)
-    }
+    http::get_struct(
+        client, 
+        &endpoints::message(&channel_id, message_id), 
+        Method::GET
+    ).await
 }
 
-pub async fn 
+pub async fn open_channel(
+    client: Client,
+    recipient_ids: &[Snowflake]
+) -> Result<Channel> {
+    let body = json!({
+        "recipients": recipient_ids
+    });
+    http::get_struct_body(client, &endpoints::PRIVATE_CHANNELS, &body, Method::POST).await
+}
+
+pub async fn close_channel(
+    client: Client,
+    channel_id: &Snowflake
+) -> Result<Channel> {
+    http::get_struct(
+        client,
+        // TODO! silent parameter seems interesting ngl
+        &format!("{}?silent=false", endpoints::channel(channel_id)), 
+        Method::DELETE
+    ).await
+}

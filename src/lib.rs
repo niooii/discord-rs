@@ -7,13 +7,15 @@ pub mod gateway;
 pub mod model;
 #[macro_use]
 pub mod serde_utils;
+use core::slice;
 use std::{ops::{Sub, SubAssign}, pin::Pin, task::{Context, Poll}};
 use futures_util::Stream;
-use model::{channel::{Channel, DmData}, guild::Guild, message::{DefaultMessageData, GeneralMessageData, Message}, user::{MainUserData, UserData}, Snowflake};
+use http::QueryError;
+use model::{channel::{Channel, DmData, GroupDmData}, guild::Guild, message::{DefaultMessageData, GeneralMessageData, Message}, user::{MainUserData, UserData}, Snowflake};
 use pin_project_lite::pin_project;
 use tokio::time::Duration;
 use crate::client::DiscordClient;
-use api::Result;
+use api::{DiscordError, Result};
 use async_stream::{stream, try_stream};
 use model::ID;
 
@@ -133,8 +135,43 @@ impl DiscordClient {
         api::send_message(self.req_client(), channel_id, content).await
     }
 
-    pub async fn open_channel(&self, recipient_ids: &[Snowflake]) -> Channel {
-        
+    // TODO! untested
+    pub async fn message_from_id(
+        &self,
+        channel_id: &Snowflake,
+        message_id: &Snowflake
+    ) -> Result<Message> {
+        api::message_from_id(self.req_client(), channel_id, message_id).await
+    }
+
+    // TODO! untested
+    pub async fn open_dm_channel(
+        &self,
+        recipient_id: &Snowflake
+    ) -> Result<DmData> {
+        match api::open_channel(self.req_client(), slice::from_ref(recipient_id)).await? {
+            Channel::Dm(d) => Ok(d),
+            _ => Err(QueryError::Other { error: "API return structure mismatch".to_string() })
+        }
+    }
+    
+    // TODO! untested
+    pub async fn open_group_channel(
+        &self,
+        recipient_ids: &[Snowflake]
+    ) -> Result<GroupDmData> {
+        match api::open_channel(self.req_client(), recipient_ids).await? {
+            Channel::GroupDm(d) => Ok(d),
+            _ => Err(QueryError::Other { error: "API return structure mismatch".to_string() })
+        }
+    }
+    
+    // TODO! untested
+    pub async fn close_channel(
+        &self,
+        channel_id: &Snowflake
+    ) -> Result<Channel> {
+        api::close_channel(self.req_client(), channel_id).await
     }
 }
 
