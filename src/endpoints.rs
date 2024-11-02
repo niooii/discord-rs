@@ -34,4 +34,3 @@ pub fn messages(channel_id: &Snowflake, before_message_id: Option<&Snowflake>, l
 pub fn message(channel_id: &Snowflake, message_id: &Snowflake) -> String {
     format!("https://discord.com/api/v9/channels/{channel_id}/messages/{message_id}")
 }
-

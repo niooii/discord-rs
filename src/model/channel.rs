@@ -10,7 +10,9 @@ use crate::model;
 use serde::de::Error;
 use model::{permissions::PermissionOverwrite, user::*};
 
+use super::guild;
 use super::Snowflake;
+use super::ID;
 
 #[derive(Deserialize, Debug)]
 pub struct GuildForumTag {
@@ -209,5 +211,25 @@ impl<'de> serde::Deserialize<'de> for Channel {
                 ChannelType::GuildMedia => Channel::GuildMedia,
             }
         )
+    }
+}
+
+impl ID for Channel {
+    fn id(&self) -> &Snowflake {
+        match self {
+            Channel::GuildText(guild_text_data) => &guild_text_data.id,
+            Channel::Dm(dm_data) => todo!(),
+            Channel::GuildVoice(guild_voice_data) => todo!(),
+            Channel::GroupDm(group_dm_data) => todo!(),
+            Channel::GuildCategory(guild_category_data) => todo!(),
+            Channel::GuildAnnouncement(guild_announcement_data) => todo!(),
+            Channel::AnnouncementThread => todo!(),
+            Channel::PublicThread => todo!(),
+            Channel::PrivateThread => todo!(),
+            Channel::GuildStageVoice => todo!(),
+            Channel::GuildDirectory => todo!(),
+            Channel::GuildForum(guild_forum_data) => todo!(),
+            Channel::GuildMedia => todo!(),
+        }
     }
 }

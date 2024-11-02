@@ -14,14 +14,16 @@ pub enum DispatchedEvent {
     /// Message was created
     MessageCreate {
         #[serde(flatten)]
-        message: Message
+        message: Message,
+        #[serde(default)]
+        guild_id: Option<Snowflake>
     },
     /// Message was edited
     MessageUpdate {
         #[serde(rename = "id")]
         message_id: Snowflake,
         channel_id: Snowflake,
-        guild_id: Snowflake,
+        guild_id: Option<Snowflake>,
         embeds: Option<Vec<MessageEmbed>>,
         components: Option<Vec<MessageComponent>>,
         attachments: Option<Vec<MessageAttachment>>,

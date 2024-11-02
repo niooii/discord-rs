@@ -9,7 +9,7 @@ pub mod model;
 pub mod serde_utils;
 use std::{ops::{Sub, SubAssign}, pin::Pin, task::{Context, Poll}};
 use futures_util::Stream;
-use model::{channel::Channel, guild::Guild, message::{DefaultMessageData, GeneralMessageData, Message}, user::{MainUserData, UserData}, Snowflake};
+use model::{channel::{Channel, DmData}, guild::Guild, message::{DefaultMessageData, GeneralMessageData, Message}, user::{MainUserData, UserData}, Snowflake};
 use pin_project_lite::pin_project;
 use tokio::time::Duration;
 use crate::client::DiscordClient;
@@ -55,7 +55,6 @@ impl<'a> Stream for MessageStream<'a> {
         self.project().inner.poll_next(cx)
     }
 }
-
 
 impl DiscordClient {
     pub async fn me(&self) -> Result<MainUserData> {
@@ -132,6 +131,10 @@ impl DiscordClient {
         }
 
         api::send_message(self.req_client(), channel_id, content).await
+    }
+
+    pub async fn open_channel(&self, recipient_ids: &[Snowflake]) -> Channel {
+        
     }
 }
 
