@@ -105,27 +105,18 @@ pub struct HeartbeatInfo {
     pub heartbeat_interval: u64
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct GatewayRecieveEventInfo {
-    pub sequence: u64
-}
-
 #[derive(Debug)]
 pub enum GatewayRecieveEvent {
     GeneralEvent {
         dispatched_event: DispatchedEvent, 
-        common: GatewayRecieveEventInfo
     },
     UnwantedEvent {
-        common: GatewayRecieveEventInfo
     },
     /// Heartbeat sending is handled automatically.
     Hello {
         heartbeat_info: HeartbeatInfo, 
-        common: GatewayRecieveEventInfo
     },
     HeartbeatAck {
-        common: GatewayRecieveEventInfo
     },
 }
  
@@ -137,20 +128,19 @@ impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
         let opcode = value.get("op").unwrap();
         let opcode = opcode.as_u64().unwrap();
         let opcode = FromPrimitive::from_u8(opcode as u8).unwrap();
-        let sequence = value.get("s").unwrap().as_u64().unwrap_or(0);
         // Dispatched event handled separately bc ownership stuff
         if opcode == GatewayOpCode::Dispatch {
             if value.get("d").unwrap().is_array() {
                 return Ok(
-                    Self::UnwantedEvent { common: GatewayRecieveEventInfo { sequence } }
+                    Self::UnwantedEvent {  }
                 )
             }
+            // println!("got this json from message: {}", value.get("d").unwrap());
             let data = DispatchedEvent::deserialize(value);
             if let Ok(e) = data {
                 return Ok(
                     Self::GeneralEvent {
                         dispatched_event: e,
-                        common: GatewayRecieveEventInfo { sequence }
                     }
                 );
             } else {
@@ -180,15 +170,10 @@ impl<'de> serde::Deserialize<'de> for GatewayRecieveEvent {
                 let heartbeat_info = HeartbeatInfo::deserialize(raw.d).unwrap();
                 Self::Hello { 
                     heartbeat_info,
-                    common: GatewayRecieveEventInfo {
-                        sequence
-                    },
                 }
             },
             GatewayOpCode::HeartbeatAck => {
-                Self::HeartbeatAck {
-                    common: GatewayRecieveEventInfo { sequence }
-                }
+                Self::HeartbeatAck {  }
             },
             _ => {
                 panic!("Invalid opcode not handled...");

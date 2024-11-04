@@ -110,7 +110,8 @@ impl DiscordClient {
         }
     }
 
-    pub async fn send_message(&self, channel_id: &Snowflake, content: &String, send_time: MessageSendTime) -> Result<DefaultMessageData> {
+    pub async fn send_message<S: AsRef<str>>(&self, channel_id: &Snowflake, content: S, send_time: MessageSendTime) -> Result<DefaultMessageData> {
+        let content = content.as_ref();
         let mut typing_duration = match send_time {
             MessageSendTime::Instant => return api::send_message(self.req_client(), channel_id, content).await,
             MessageSendTime::Fast => Duration::from_secs_f32(content.len() as f32 / 15_f32),

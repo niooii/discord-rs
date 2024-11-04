@@ -78,9 +78,9 @@ struct MessagePostData {
 }
 
 impl MessagePostData {
-    fn new(content: &String) -> MessagePostData {
+    fn new(content: String) -> MessagePostData {
         MessagePostData {
-            content: content.clone()
+            content
         }
     }
 }
@@ -96,9 +96,9 @@ pub async fn start_typing(
 pub async fn send_message(
     client: Client,
     channel_id: &Snowflake,
-    content: &String
+    content: &str
 ) -> Result<DefaultMessageData> {
-    let post_data = MessagePostData::new(content);
+    let post_data = MessagePostData::new(content.to_string());
     http::get_struct_body(
         client, 
         &endpoints::send_message(channel_id), 

@@ -104,10 +104,14 @@ pub struct UserJoinData {
     #[serde(flatten)]
     pub general: GeneralMessageData,
     #[serde(rename = "author")]
-    user: UserData,
-    #[serde(rename = "member")]
-    member_info: GuildMemberData,
-    guild_id: Snowflake,
+    pub user: UserData,
+    /// This will be None if it is accessed from the referenced_message in a Reply,
+    /// otherwise it will be Some.
+    pub member: Option<GuildMemberData>,
+    /// This will be none if the message was recieved from the Gateway API, as it can be
+    /// accessed from the dispatched event variants themselves.
+    /// Otherwise, it is guarenteed to be Some from the discord API.
+    pub guild_id: Option<Snowflake>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -127,7 +131,10 @@ pub struct ChatInputCommandData {
     pub content: String,
     #[serde(default, with = "time::serde::iso8601::option")]
     pub edited_timestamp: Option<OffsetDateTime>,
-    pub guild_id: Snowflake,
+    /// This will be none if the message was recieved from the Gateway API, as it can be
+    /// accessed from the dispatched event variants themselves.
+    /// Otherwise, it is guarenteed to be Some from the discord API.
+    pub guild_id: Option<Snowflake>,
     pub interaction: Data,
     pub interaction_metadata: Metadata,
     pub member: Option<GuildMemberData>,
@@ -175,8 +182,8 @@ impl<'de> serde::Deserialize<'de> for Message {
         let helper = MessageTypeHelper::deserialize(&value).map_err(D::Error::custom)?;
         
         let message_type = MessageType::from_u8(helper.msg_type)
-            .ok_or_else(|| Error::custom(format!("invalid or unimplemented message type: {}", helper.msg_type)))?;
-        
+        .ok_or_else(|| Error::custom(format!("invalid or unimplemented message type: {}", helper.msg_type)))?;
+    
         let message = match message_type {
             MessageType::Default => {
                 let default_msg_data = DefaultMessageData::deserialize(value).map_err(D::Error::custom)?;
@@ -192,6 +199,8 @@ impl<'de> serde::Deserialize<'de> for Message {
             // MessageType::ChannelIconChange => todo!(),
             // MessageType::ChannelPinnedMessage => todo!(),
             MessageType::UserJoin => {
+                // TODO! for some reason this new value
+                // is missing the guild_id in its json for user
                 let user_join_data = UserJoinData::deserialize(value).map_err(D::Error::custom)?;
                 Message::UserJoin(user_join_data)
             },

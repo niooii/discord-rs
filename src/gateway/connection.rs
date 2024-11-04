@@ -1,8 +1,12 @@
 #![allow(dead_code)]
 
+use serde_json::Number;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 use serde::Deserialize;
 use serde_json::Value;
+use tokio_stream::wrappers::ReceiverStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio::time::sleep;
 use serde::Serialize;
@@ -13,7 +17,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 use anyhow::Result;
-
+use futures_util::Stream;
 use super::dispatched_event::DispatchedEvent;
 use super::error::GatewayError;
 use super::events::*;
@@ -54,7 +58,7 @@ pub struct GatewayConnection {
     heartbeat_interval_ms: Arc<Mutex<u64>>,
     ws_data_read_loop: JoinHandle<()>,
     ws_heartbeat_send_loop: JoinHandle<()>,
-    event_q: Arc<Mutex<VecDeque<DispatchedEvent>>>
+    event_receiver: Receiver<DispatchedEvent>
 }
 
 impl GatewayConnection { 
@@ -64,6 +68,7 @@ impl GatewayConnection {
         let ws = "wss://gateway.discord.gg/?encoding=json&v=9";
         let (ws_stream, _) = tokio_tungstenite::connect_async(ws).await?;
 
+        let (event_sender, event_receiver) = mpsc::channel(256); 
         let (mut write, read) = ws_stream.split();
         
         let properties = Properties {
@@ -108,21 +113,19 @@ impl GatewayConnection {
 
         let curr_sequence = Arc::new(Mutex::new(0));
         let heartbeat_interval_ms = Arc::new(Mutex::new(0));
-        let event_q = Arc::new(Mutex::new(VecDeque::new()));
 
         let connection = GatewayConnection {
             curr_sequence: curr_sequence.clone(),
             heartbeat_interval_ms: heartbeat_interval_ms.clone(),
-            event_q: event_q.clone(),
+            event_receiver,
             ws_data_read_loop: {
                 let heartbeat_interval = heartbeat_interval_ms.clone();
                 let curr_sequence = curr_sequence.clone();
-                let event_q = event_q.clone();
                 let read_task = tokio::spawn(
                     read.for_each(move |message| {
                     let heartbeat_interval = heartbeat_interval.clone();
                     let curr_sequence = curr_sequence.clone();
-                    let event_q = event_q.clone();
+                    let event_sender = event_sender.clone();
                     async move {
                         let recv_data = message.unwrap().into_text().unwrap();
                         if recv_data.is_empty() {
@@ -132,32 +135,35 @@ impl GatewayConnection {
                         let json: Value = serde_json::from_str(
                             &recv_data
                         ).unwrap();
+
+                        let sequence = json.get("s").unwrap_or(&Value::Number(Number::from(0)))
+                            .as_u64().unwrap_or_default();
+                        {
+                            let mut curr_sequence = curr_sequence.lock().unwrap();
+                            *curr_sequence = sequence;
+                        }
                         let recv_event = GatewayRecieveEvent::deserialize(json);
                         match recv_event {
                             Ok(e) => {
-                                let mut curr_sequence = curr_sequence.lock().unwrap();
-                                let mut update_sequence = |common: &GatewayRecieveEventInfo| {
-                                    *curr_sequence = common.sequence;
-                                };
                                 match e {
                                     // Heartbeats are handled automatically.
-                                    GatewayRecieveEvent::Hello { heartbeat_info, common } => {
-                                        update_sequence(&common);
+                                    GatewayRecieveEvent::Hello { heartbeat_info } => {
+                                        // update_sequence(&common);
                                         let mut heartbeat_interval = heartbeat_interval.lock().unwrap();
                                         *heartbeat_interval = heartbeat_info.heartbeat_interval;
                                     },
                                     // TODO! be sure to handle the RESUME event, as it sends a list of events
                                     // the only events that the user should be notified about.
-                                    GatewayRecieveEvent::GeneralEvent { dispatched_event, common } => {
-                                        update_sequence(&common);
-                                        let mut event_q = event_q.lock().unwrap();
-                                        event_q.push_back(dispatched_event);
+                                    GatewayRecieveEvent::GeneralEvent { dispatched_event } => {
+                                        // update_sequence(&common);
+                                        drop(curr_sequence);
+                                        event_sender.send(dispatched_event).await;
                                     }
-                                    GatewayRecieveEvent::HeartbeatAck { common } => {
-                                        update_sequence(&common);
+                                    GatewayRecieveEvent::HeartbeatAck {  } => {
+                                        // update_sequence(&common);
                                     },
-                                    GatewayRecieveEvent::UnwantedEvent { common } => {
-                                        update_sequence(&common);
+                                    GatewayRecieveEvent::UnwantedEvent {  } => {
+                                        // update_sequence(&common);
                                     },
                                 };
                             },
@@ -217,16 +223,9 @@ impl GatewayConnection {
         Ok(connection)
     }
 
-    // TODO! async stream api
-    /*
-    GatewayConnection should implement Stream.
-    Implement deserialize for GatewayRecieveEvent so i can just
-    call GatewayRecieveEvent::Deserialize on stream objects
-    Stream Item will be Result<DispatchedEvent>
-    */
-    pub fn poll_events(&mut self) -> Option<DispatchedEvent> {
-        let mut event_q = self.event_q.lock().unwrap();
-        event_q.pop_front()
+    pub fn events(self) -> impl Stream<Item = DispatchedEvent> {
+        // Create a new stream type that wraps the receiver
+        ReceiverStream::new(self.event_receiver)
     }
     
     pub async fn wait_until_finish(self) {
@@ -234,6 +233,13 @@ impl GatewayConnection {
     }
 }
 
+    // TODO! async stream api
+    /*
+    GatewayConnection should implement Stream.
+    Implement deserialize for GatewayRecieveEvent so i can just
+    call GatewayRecieveEvent::Deserialize on stream objects
+    Stream Item will be Result<DispatchedEvent>
+    */
 impl GatewaySendEventRaw {
     pub fn login(token: String, capabilities: u32, properties: Properties, presence: Presence, compress: bool, client_state: ClientState) -> Result<Self> {
         use serde_json::Value;

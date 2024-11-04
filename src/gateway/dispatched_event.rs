@@ -1,9 +1,10 @@
 use message::MessageAttachment;
 use serde::Deserialize;
+use user::UserData;
 use crate::model::*;
 
 use crate::model;
-use model::{guild::GuildMemberData, message::{GeneralMessageData, Message, MessageComponent, MessageEmbed}, voice::UserVoiceState, channel::Channel, user::{activity::*, GatewayUserData, MainUserData, RelationshipAddEvent, RelationshipAddType, RelationshipRemoveEvent, RelationshipRemoveType, UserDataLimited}};
+use model::{guild::GuildMemberData, message::{GeneralMessageData, Message, MessageComponent, MessageEmbed}, voice::UserVoiceState, channel::Channel, user::{activity::*, GatewayUserData, MainUserData, RelationshipAddEvent, RelationshipAddType, RelationshipRemoveEvent, RelationshipRemoveType}};
 
 use super::{error::GatewayError, events::GatewayReceiveEventRaw};
 
@@ -15,7 +16,6 @@ pub enum DispatchedEvent {
     MessageCreate {
         #[serde(flatten)]
         message: Message,
-        #[serde(default)]
         guild_id: Option<Snowflake>
     },
     /// Message was edited
@@ -289,7 +289,7 @@ pub enum DispatchedEvent {
     VoiceStateUpdate {
         #[serde(flatten)]
         new_state: UserVoiceState,
-        guild_id: Snowflake,
+        guild_id: Option<Snowflake>,
         member: Option<GuildMemberData>
     },
     /// Guild's voice server was updated
@@ -327,7 +327,19 @@ pub enum DispatchedEvent {
         #[serde(rename = "voice_states")]
         user_voice_states: Vec<UserVoiceState>
     },
-    // /// A friend request has been sent to or from the user. (user only)
+    /// The state of a call was updated (not voice channel) (user only)
+    CallUpdate {
+        
+    },
+    /// A call was ended. (user only)
+    CallDelete {
+        channel_id: Snowflake
+    },
+    // Dunno ngl (user only)
+    UserGuildSettingsUpdate {
+
+    },
+    /// A friend request has been sent to or from the user. (user only)
     RelationshipAdd {
         #[serde(flatten)]
         relationship_add_event: RelationshipAddEvent,
@@ -336,6 +348,16 @@ pub enum DispatchedEvent {
     RelationshipRemove {
         #[serde(flatten)]
         relationship_remove_event: RelationshipRemoveEvent,
+    },
+    /// Someone was added to a group chat (user only)
+    ChannelRecipientAdd {
+        channel_id: Snowflake,
+        user: UserData
+    },
+    /// Someone was removed from a group chat (user only)
+    ChannelRecipientRemove {
+        channel_id: Snowflake,
+        user: UserData 
     },
     /// Someone joined/left a vc in a server (I think). (user only)
     VoiceChannelStatusUpdate {

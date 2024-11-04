@@ -217,18 +217,18 @@ impl<'de> serde::Deserialize<'de> for Channel {
 impl ID for Channel {
     fn id(&self) -> &Snowflake {
         match self {
+            Channel::Dm(dm_data) => &dm_data.id,
+            Channel::GroupDm(group_dm_data) => &group_dm_data.id,
             Channel::GuildText(guild_text_data) => &guild_text_data.id,
-            Channel::Dm(dm_data) => todo!(),
-            Channel::GuildVoice(guild_voice_data) => todo!(),
-            Channel::GroupDm(group_dm_data) => todo!(),
-            Channel::GuildCategory(guild_category_data) => todo!(),
-            Channel::GuildAnnouncement(guild_announcement_data) => todo!(),
+            Channel::GuildVoice(guild_voice_data) => &guild_voice_data.id,
+            Channel::GuildCategory(guild_category_data) => &guild_category_data.id,
+            Channel::GuildAnnouncement(guild_announcement_data) => &guild_announcement_data.id,
+            Channel::GuildForum(guild_forum_data) => &guild_forum_data.id,
             Channel::AnnouncementThread => todo!(),
             Channel::PublicThread => todo!(),
             Channel::PrivateThread => todo!(),
             Channel::GuildStageVoice => todo!(),
             Channel::GuildDirectory => todo!(),
-            Channel::GuildForum(guild_forum_data) => todo!(),
             Channel::GuildMedia => todo!(),
         }
     }

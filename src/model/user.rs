@@ -74,17 +74,6 @@ pub struct UserData {
     pub public_flags: Option<u64>,
 }
 
-/// Used in responses where the api returns a partial user payload, which always should contain the id.
-#[derive(Deserialize, Debug)]
-pub struct UserDataLimited {
-    pub id: Snowflake,
-    pub username: Option<String>,
-    // This is the avatar hash. 
-    pub avatar: Option<String>,
-    pub discriminator: Option<String>,
-    pub public_flags: Option<u64>,
-}
-
 /* =========================================== */
 /* ----- RELATIONSHIP STRUCT DEFINITIONS ----- */
 /* =========================================== */
