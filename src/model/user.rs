@@ -38,7 +38,7 @@ pub struct MainUserData {
     pub nsfw_allowed: bool,
     pub linked_users: Vec<String>,
     pub bio: String,
-    pub authenticator_types: Vec<String>,
+    pub authenticator_types: Vec<u32>,
 }
 
 /// User data that is sent from the Gateway connection, which contains slightly different data.
